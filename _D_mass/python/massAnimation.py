@@ -47,7 +47,7 @@ class massAnimation:
         # Draw mass is the main function that will call the functions:
     def update(self, x: np.ndarray):
         # Process inputs to function
-        z = x[0][0]   # position of mass, m
+        z = x[0][0]   # position of mass, m # Connor Modified
         self.drawWeight(z)
         self.drawSpring(z)
         # After each function has been called, initialization is over.

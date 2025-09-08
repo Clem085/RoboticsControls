@@ -14,10 +14,19 @@ class VTOLAnimation:
         self.handle = []                      # Initializes a list object that will
         # be used to contain handles to the
         # patches and line objects.
-        plt.plot([0.0, P.length], [0.0, 0.0], 'k')    # Draw a base line
-        plt.axis([-P.length / 5, P.length + P.length / 5, -P.length /
-                 5, P.length+P.length/5])  # Change the x,y axis limits
-
+        # <<< ORIGINAL
+        # plt.plot([0.0, P.length], [0.0, 0.0], 'k')    # Draw a base line
+        # plt.axis([-P.length / 5, P.length + P.length / 5, -P.length /
+        #          5, P.length+P.length/5])  # Change the x,y axis limits
+        # ORIGINAL >>>
+        
+        # <<< NEW
+        # Symmetric ground line and view window
+        plt.plot([-P.length, P.length], [0.0, 0.0], 'k')
+        pad = 0.2 * P.length  # add ~20% margin around the edges
+        plt.axis([-P.length - pad, P.length + pad,
+                -0.2 * P.length, P.length + pad])
+        # NEW >>>
         # Create exit button
         self.button_ax = plt.axes([0.8, 0.805, 0.1, 0.075])  # [left, bottom, width, height]
         self.exit_button = Button(self.button_ax, label='Exit', color='r',)
