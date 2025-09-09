@@ -35,4 +35,5 @@ while t <= t_end:
     
     t += dt
 
-plt.waitforbuttonpress()
+plt.savefig("vtol_screenshot.png", dpi=200)
+print("Saved frame to vtol_screenshot.png")
