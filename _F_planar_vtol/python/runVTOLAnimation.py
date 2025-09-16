@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
 """
 run_VTOLAnimation.py
-Runs BOTH the VTOL animation and the 5-panel data plot using the exact
-signal setup from the provided "solution code".
-
-- z, h, theta are driven by simple reference signals (no plant dynamics).
-- Force is centered at hover equilibrium Fe.
-- Torque is a small, faster sinusoid.
-- Motor thrusts are computed via the provided mixing matrix.
-
-If you want the green reference lines (z_r, h_r) to be visible at zero,
-leave z_ref and h_ref as 0.0 in the call to dataPlot.update().
+Runs BOTH the VTOL animation and the 5-panel data plot with scripted signals
+(no plant dynamics). Matches the “solution” signal setup.
 """
+
+# ---- pick a stable backend BEFORE importing pyplot (mirrors your mass demo) ---
+import matplotlib
+matplotlib.use("tkagg")  # same as massAnimation; avoids Qt-related freezes
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,49 +20,47 @@ from dataPlotter import dataPlotter
 # ------------------------------
 # Reference / input signals
 # ------------------------------
-z_plot = signalGenerator(amplitude=4.0, frequency=0.1, y_offset=5.0)
-h_plot = signalGenerator(amplitude=2.0, frequency=0.1, y_offset=2.0)
-theta_plot = signalGenerator(amplitude=np.pi/8.0, frequency=0.5, y_offset=0.0)
+z_plot     = signalGenerator(amplitude=4.0, frequency=0.10, y_offset=5.0)
+h_plot     = signalGenerator(amplitude=2.0, frequency=0.10, y_offset=2.0)
+theta_plot = signalGenerator(amplitude=np.pi/8.0, frequency=0.50, y_offset=0.0)
 
 # Center total thrust around hover equilibrium Fe
-# (Fe = (mc + 2*mr)*g is defined in VTOLParam.py)
-force_plot = signalGenerator(amplitude=5.0, frequency=0.5, y_offset=P.Fe)
+force_plot = signalGenerator(amplitude=5.0, frequency=0.50, y_offset=P.Fe)
 
-# Small torque; relatively fast
-torque_plot = signalGenerator(amplitude=0.1, frequency=10.0, y_offset=0.0)
+# Keep torque modest and not ultra-fast to reduce redraw load
+torque_plot = signalGenerator(amplitude=0.10, frequency=0.50, y_offset=0.0)
 
 # ------------------------------
 # Plotter & Animation
 # ------------------------------
-dataPlot = dataPlotter()
-animation = VTOLAnimation()
+logger    = dataPlotter()     # 5 stacked plots
+animation = VTOLAnimation()   # vehicle view
 
 # ------------------------------
 # Main loop
 # ------------------------------
 t = P.t_start
 while t < P.t_end:
-    # Generate “reference” values (no dynamics)
-    z = z_plot.sin(t)
-    h = h_plot.sin(t)
+    # Scripted “state” (no dynamics)
+    z     = z_plot.sin(t)
+    h     = h_plot.sin(t)
     theta = theta_plot.sin(t)
 
-    # Generate force/torque and convert to motor thrusts
-    f = force_plot.sin(t)
+    # Total force/torque -> motor thrusts
+    F   = force_plot.sin(t)
     tau = torque_plot.sin(t)
-    motor_thrusts = P.mixing @ np.array([[f], [tau]])  # [f_left, f_right]^T
+    motor_thrusts = P.mixing @ np.array([[F], [tau]])  # [f_left; f_right]
 
-    # Assemble state vector expected by the visualizers
+    # State vector for visualizers: [z, h, theta, zdot, hdot, thetadot]
     state = np.array([[z], [h], [theta], [0.0], [0.0], [0.0]])
 
-    # Update animation and data plots
-    animation.update(state)  # target marker uses default (0.0)
-    # Pass z_ref and h_ref as 0.0 so green baselines appear at zero
-    dataPlot.update(t=t, states=state, motor_thrusts=motor_thrusts, z_ref=0.0, h_ref=0.0)
+    # Draw animation and plots
+    animation.update(state)  # target defaults to 0.0
+    logger.update(t=t, states=state, motor_thrusts=motor_thrusts, z_ref=0.0, h_ref=0.0)
 
-    # Advance time and draw
+    # Match pacing to your mass demo to keep UI responsive
     t += P.t_plot
-    plt.pause(0.02)
+    plt.pause(0.1)  # same pause duration you used with the mass script
 
 print("Press any key in the plot window to close.")
 plt.waitforbuttonpress()
