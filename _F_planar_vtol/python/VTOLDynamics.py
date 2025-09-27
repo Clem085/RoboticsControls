@@ -38,23 +38,42 @@ class VTOLDynamics:
         y = self.h()  # using a measurement model, return the corresponding output
         return y
 
-    def f(self, state, u):
-        #  Return xdot = f(x,u)
-        z = state[0][0]
-        h = state[1][0]
-        theta = state[2][0]
-        zdot = state[3][0]
-        hdot = state[4][0]
-        thetadot = state[5][0]
-        fr = u[0][0]
-        fl = u[1][0]
-        # The equations of motion.
-        zddot = (-(fr + fl) * np.sin(theta) + -self.mu * zdot + self.F_wind) / (self.mc + 2.0 * self.mr)
-        hddot = (-(self.mc + 2.0 * self.mr) * P.g + (fr + fl) * np.cos(theta)) / (self.mc + 2.0 * self.mr)
-        thetaddot = self.d * (fr - fl) / (self.Jc + 2.0 * self.mr * (self.d ** 2))
-        # build xdot and return
-        xdot = np.array([[zdot], [hdot], [thetadot], [zddot], [hddot], [thetaddot]])
-        return xdot
+    # # F.2: Run Anything
+    # def f(self, state, u):
+    #     #  Return xdot = f(x,u)
+    #     z = state[0][0]
+    #     h = state[1][0]
+    #     theta = state[2][0]
+    #     zdot = state[3][0]
+    #     hdot = state[4][0]
+    #     thetadot = state[5][0]
+    #     fr = u[0][0]
+    #     fl = u[1][0]
+    #     # The equations of motion.
+    #     zddot = (-(fr + fl) * np.sin(theta) + -self.mu * zdot + self.F_wind) / (self.mc + 2.0 * self.mr)
+    #     hddot = (-(self.mc + 2.0 * self.mr) * P.g + (fr + fl) * np.cos(theta)) / (self.mc + 2.0 * self.mr)
+    #     thetaddot = self.d * (fr - fl) / (self.Jc + 2.0 * self.mr * (self.d ** 2))
+    #     # build xdot and return
+    #     xdot = np.array([[zdot], [hdot], [thetadot], [zddot], [hddot], [thetaddot]])
+    #     return xdot
+    #
+    # F3: Run Equations of Motion
+    # _F_planar_vtol/python/VTOLDynamics.py (snippet)
+    def f(state, u, P):
+        zv, h, th, zdot, hdot, thdot = state
+        fr, fl = u  # or pass F, tau and compute fr,fl via mapping in F.4
+        F = fr + fl
+        tau = P.d * (fr - fl)
+
+        mT = P.mc + P.mr + P.ml
+        JT = P.Jc + (P.mr + P.ml) * P.d**2
+
+        zddot = (-F*np.sin(th) - P.mu*zdot) / mT
+        hddot = ( F*np.cos(th) - mT*P.g ) / mT
+        thddot = tau / JT
+
+        return np.array([zdot, hdot, thdot, zddot, hddot, thddot])
+
 
     def h(self):
         # return y=h(x)
