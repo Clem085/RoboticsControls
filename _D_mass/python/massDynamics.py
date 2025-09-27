@@ -39,17 +39,26 @@ class massDynamics:
         self._integrator = integrator.lower()
 
     # ---------- Core dynamics ----------
-    def f(self, x: np.ndarray, u: float | np.ndarray) -> np.ndarray:
-        """
-        Continuous-time dynamics: xdot = f(x, u)
-        x: shape (2,1) or (2,)
-        u: scalar or shape (1,1)/(1,)
-        """
-        x = self._as_col2(x)
-        u = float(np.asarray(u).squeeze())
-        z, zdot = x[0, 0], x[1, 0]
-        zddot = (u - self.b * zdot - self.k * z) / self.m
-        return np.array([[zdot], [zddot]], dtype=float)
+    # # D.2: Run ANYTHING
+    # def f(self, x: np.ndarray, u: float | np.ndarray) -> np.ndarray:
+    #     """
+    #     Continuous-time dynamics: xdot = f(x, u)
+    #     x: shape (2,1) or (2,)
+    #     u: scalar or shape (1,1)/(1,)
+    #     """
+    #     x = self._as_col2(x)
+    #     u = float(np.asarray(u).squeeze())
+    #     z, zdot = x[0, 0], x[1, 0]
+    #     zddot = (u - self.b * zdot - self.k * z) / self.m
+    #     return np.array([[zdot], [zddot]], dtype=float)
+    #
+    # D.3: Run Equations of Motion
+    def f(state, u, P):
+        z, zdot = state
+        F = u
+        zddot = (F - P.b*zdot - P.k*z) / P.m
+        return np.array([zdot, zddot])
+
 
     def update(self, u: float | np.ndarray) -> np.ndarray:
         """
