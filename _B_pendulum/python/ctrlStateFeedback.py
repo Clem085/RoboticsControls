@@ -45,7 +45,7 @@ class ctrlStateFeedback:
         if np.linalg.matrix_rank(cnt.ctrb(A, B)) != 4:
             print("The system is not controllable")
         else:
-            self.K = cnt.acker(A, B, des_poles)
+            self.K = cnt.place(A, B, des_poles)
             Cr = np.array([[1.0, 0.0, 0.0, 0.0]])
             self.kr = -1.0 / (Cr @ np.linalg.inv(A-B @ self.K) @ B)
         # print gains to terminal

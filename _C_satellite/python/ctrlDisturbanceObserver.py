@@ -10,11 +10,12 @@ class ctrlDisturbanceObserver:
         # State Feedback Control Design
         #--------------------------------------------------
         # tuning parameters
-        wn_th = 0.6
-        wn_phi = 1.1    # rise time for angle
-        zeta_phi = 0.707  # damping ratio position
-        zeta_th = 0.707  # damping ratio angle
-        integrator_pole = -1.0
+        wn_th = 1.0 
+        wn_phi = 0.1    
+        zeta_phi = 0.95  # damping ratio for phi
+        zeta_th = 0.95  # damping ratio for theta
+        integrator_pole = -2.0
+
         # pick observer poles
         wn_th_obs = 10.0 * wn_th
         wn_phi_obs = 10.0 * wn_phi

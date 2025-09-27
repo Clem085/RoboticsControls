@@ -23,13 +23,13 @@ class ctrlStateFeedback:
         wn = 2.2 / tr  # natural frequency
         des_char_poly = [1, 2 * zeta * wn, wn**2]
         des_poles = np.roots(des_char_poly)
-        des_poles = [-50.0, -50.1]
+        #des_poles = [-1.0, -1.0]
 
         # Compute the gains if the system is controllable
-        if np.linalg.matrix_rank(cnt.ctrb(A, B)) != 2:
+        if np.linalg.matrix_rank(cnt.ctrb(A, B)) != A.shape[0]:
             print("The system is not controllable")
         else:
-            self.K = (cnt.place(A, B, des_poles))
+            self.K = cnt.place(A, B, des_poles)
             self.kr = -1.0 / (C @ np.linalg.inv(A - B @ self.K) @ B)
         print('K: ', self.K)
         print('kr: ', self.kr)

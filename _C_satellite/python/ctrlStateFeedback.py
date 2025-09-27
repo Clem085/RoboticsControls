@@ -8,10 +8,11 @@ class ctrlStateFeedback:
         # State Feedback Control Design
         #--------------------------------------------------
         # tuning parameters
-        tr_phi = 2
-        tr_th = 3.66
-        zeta_phi = 0.707  # damping ratio position
-        zeta_th = 0.707  # damping ratio angle
+        tr_th = 0.8
+        tr_phi = 8.0
+        zeta_th = 0.707  # damping ratio for theta
+        zeta_phi = 0.707  # damping ratio for phi
+
         # State Space Equations
         # xdot = A*x + B*u
         # y = C*x
@@ -35,7 +36,7 @@ class ctrlStateFeedback:
         if np.linalg.matrix_rank(cnt.ctrb(A, B)) != 4:
             print("The system is not controllable")
         else:
-            self.K = cnt.acker(A, B, des_poles)
+            self.K = cnt.place(A, B, des_poles)
             Cr = np.array([[1.0, 0.0, 0.0, 0.0]])
             self.kr = -1.0 / (Cr @ np.linalg.inv(A - B @ self.K) @ B)
         # print gains to terminal

@@ -62,11 +62,11 @@ class ctrlPID:
         # initialize variables for integrator and differentiators
         #---------------------------------------------------
         self.integrator_z = 0.
-        self.error_z_d1 = 0.
+        self.error_z_prev = 0.
         self.z_dot = P.zdot0
-        self.z_d1 = P.z0
+        self.z_prev = P.z0
         self.theta_dot = P.thetadot0
-        self.theta_d1 = P.theta0
+        self.theta_prev = P.theta0
         
     def update(self, z_r, y):
         z = y[0][0]
@@ -78,11 +78,11 @@ class ctrlPID:
         error_z = z_r - z
         # differentiate z
         self.z_dot = (2.0*self.sigma - P.Ts) / (2.0*self.sigma + P.Ts) * self.z_dot \
-            + (2.0 / (2.0*self.sigma + P.Ts)) * ((z - self.z_d1))
+            + (2.0 / (2.0*self.sigma + P.Ts)) * ((z - self.z_prev))
         # if z_dot is small, integrate z
         if np.abs(self.z_dot) < 0.07:
             self.integrator_z = self.integrator_z \
-                + (P.Ts / 2) * (error_z + self.error_z_d1)
+                + (P.Ts / 2) * (error_z + self.error_z_prev)
         
         # PID control - unsaturated
         theta_r_unsat = self.kp_z * error_z \
@@ -106,16 +106,16 @@ class ctrlPID:
         error_th = theta_r - theta
         # differentiate theta
         self.theta_dot = (2.0*self.sigma - P.Ts) / (2.0*self.sigma + P.Ts) * self.theta_dot \
-            + (2.0 / (2.0*self.sigma + P.Ts)) * ((theta - self.theta_d1))
+            + (2.0 / (2.0*self.sigma + P.Ts)) * ((theta - self.theta_prev))
          # PD control on theta
         F_unsat = self.kp_th * error_th \
             - self.kd_th * self.theta_dot
         # saturate the force
         F = saturate(F_unsat, P.F_max)
         # update delayed variables
-        self.error_z_d1 = error_z
-        self.z_d1 = z
-        self.theta_d1 = theta
+        self.error_z_prev = error_z
+        self.z_prev = z
+        self.theta_prev = theta
         # return computed force
         return F
 

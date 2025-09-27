@@ -54,7 +54,7 @@ class ctrlDisturbanceObserver:
         if np.linalg.matrix_rank(cnt.ctrb(A1, B1)) != 5:
             print("The system is not controllable")
         else:
-            K1 = cnt.acker(A1, B1, des_poles)
+            K1 = cnt.place(A1, B1, des_poles)
             self.K = K1[0][0:4]
             self.ki = K1[0][4]
         # compute observer gains

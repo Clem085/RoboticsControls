@@ -9,7 +9,7 @@ from ctrlLoopshape import ctrlLoopshape
 
 # instantiate pendulum, controller, and reference classes
 pendulum = pendulumDynamics(alpha = 0.1)
-controller = ctrlLoopshape()
+controller = ctrlLoopshape(method="digital_filter")
 reference = signalGenerator(amplitude=0.5, frequency=0.04)
 disturbance = signalGenerator(amplitude=0.5)
 noise_z = signalGenerator(amplitude=0.001)

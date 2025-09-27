@@ -3,8 +3,10 @@ import matplotlib.patches as mpatches
 from matplotlib.widgets import Button
 import numpy as np
 import armParam as P
-# if you are having difficulty with the graphics, 
-# try using one of the following backends 
+import signal
+
+# if you are having difficulty with the graphics,
+# try using one of the following backends
 # See https://matplotlib.org/stable/users/explain/backends.html
 import matplotlib
 # matplotlib.use('qtagg')  # requires pyqt or pyside
@@ -16,16 +18,14 @@ import matplotlib
 matplotlib.use('tkagg')  # requires TkInter
 # matplotlib.use('wxagg')  # requires wxPython
 
-def exit_program(event):
-    exit()
 
 class armAnimation:
     def __init__(self):
         # Used to indicate initialization
         self.flagInit = True
         # Initializes a figure and axes object
-        self.fig, self.ax = plt.subplots()        
-        
+        self.fig, self.ax = plt.subplots()
+
         # Initializes a list object that will be used to
         # contain handles to the patches and line objects.
         self.handle = []
@@ -41,7 +41,10 @@ class armAnimation:
         self.exit_button = Button(self.button_ax, label='Exit', color='r',)
         self.exit_button.label.set_fontweight('bold')
         self.exit_button.label.set_fontsize(18)
-        self.exit_button.on_clicked(exit_program)
+        self.exit_button.on_clicked(lambda event: exit())
+
+        # Register <ctrl+c> signal handler to stop the simulation
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     def update(self, x):
         # Process inputs to function

@@ -32,8 +32,13 @@ t_plot = 0.1  # the plotting and animation is updated at this rate
 max_thrust = 10.0  # Max thrust produced by each motor, N
 
 # mixing matrix
+<<<<<<< HEAD
 mixing = np.linalg.inv(np.array([[1.0, 1.0], [d, -d]]))
 
 # equilibrium force 
 Fe = (mc + 2.0 * mr) * g  
 
+=======
+unmixing = np.array([[1.0, 1.0], [d, -d]]) # converts fr and fl (RL) to force and torque (FT)
+mixing = np.linalg.inv(unmixing) # converts force and torque (FT) to fr and fl (RL)
+>>>>>>> 4318175bc1a9fe8876995dc205f915a25f34e701

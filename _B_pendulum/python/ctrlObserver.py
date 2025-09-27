@@ -52,9 +52,10 @@ class ctrlObserver:
         if np.linalg.matrix_rank(cnt.ctrb(A1, B1)) != 5:
             print("The system is not controllable")
         else:
-            K1 = cnt.acker(A1, B1, des_poles)
+            K1 = cnt.place(A1, B1, des_poles)
             self.K = K1[0][0:4]
             self.ki = K1[0][4]
+            
         # compute observer gains
         wn_z_obs = 2.2 / tr_z_obs
         wn_th_obs = 2.2 / tr_theta_obs
@@ -66,8 +67,8 @@ class ctrlObserver:
         if np.linalg.matrix_rank(cnt.ctrb(self.A.T, self.C.T)) != 4:
             print("The system is not observable")
         else:
-            self.L = signal.place_poles(self.A.T, self.C.T, 
-                                        des_obs_poles).gain_matrix.T
+            self.L = cnt.place(self.A.T, self.C.T, 
+                                        des_obs_poles).T
         # print gains to terminal
         print('K: ', self.K)
         print('ki: ', self.ki)

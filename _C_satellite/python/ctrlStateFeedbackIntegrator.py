@@ -8,11 +8,12 @@ class ctrlStateFeedbackIntegrator:
         #--------------------------------------------------
         # State Feedback Control Design
         #--------------------------------------------------
-        wn_th = 1.6 
-        wn_phi = 0.6     
-        zeta_phi = 1.707  # damping ratio position
-        zeta_th = 0.707  # damping ratio angle
-        integrator_pole = -2
+        wn_th = 4.0 
+        wn_phi = 0.4    
+        zeta_phi = 0.95  # damping ratio for phi
+        zeta_th = 0.95  # damping ratio for theta
+        integrator_pole = -2.0
+
         # State Space Equations
         # xdot = A*x + B*u
         # y = C*x

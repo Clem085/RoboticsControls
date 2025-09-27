@@ -5,8 +5,8 @@ from signalGenerator import signalGenerator
 from armAnimation import armAnimation
 from dataPlotter import dataPlotter
 
-# instantiate reference input classes, these are not actual values, 
-# just values to allow us to plot 
+# instantiate reference input classes, these are not actual values,
+# just values to allow us to plot
 theta_plot = signalGenerator(amplitude=2.0*np.pi, frequency=0.1)
 tau_plot = signalGenerator(amplitude=5, frequency=.5)
 
@@ -27,8 +27,8 @@ while t < P.t_end:  # main simulation loop
     dataPlot.update(t, state, tau)
 
     # advance time by t_plot
-    t += P.t_plot  
-    plt.pause(0.001)  # allow time for animation to draw
+    t += P.t_plot
+    plt.pause(0.02)  # allow time for animation to draw
 
 # Keeps the program from closing until the user presses a button.
 print('Press key to close')
