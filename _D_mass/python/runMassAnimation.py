@@ -12,7 +12,7 @@ from dataPlotter import dataPlotter
 # ------------------------------
 z_plot = signalGenerator(amplitude=1.0, frequency=0.5, y_offset=0.2)
 f_plot = signalGenerator(amplitude=2.0, frequency=0.5)
-
+# 
 # ------------------------------
 # Visuals
 # ------------------------------
