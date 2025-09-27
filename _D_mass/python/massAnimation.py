@@ -47,12 +47,7 @@ class massAnimation:
 
     def update(self, u):
         # Process inputs to function
-<<<<<<< HEAD
         z = x[0][0]   # position of mass, m # Connor Modified
-=======
-        z = u.item(0)   # position of mass, m
-
->>>>>>> 4318175bc1a9fe8876995dc205f915a25f34e701
         self.drawWeight(z)
         self.drawSpring(z)
 
