@@ -1,11 +1,38 @@
 # VTOL Parameter File
 import numpy as np
 
+
 # Physical parameters of the  VTOL known to the controller
 mc = 1.0  # kg
 mr = 0.25  # kg
 Jc = 0.0042  # kg m^2
 d = 0.3  # m
+
+
+
+# Geometry parameter (must already be defined):
+# d = <your arm length>  # [m]
+
+# Map from individual rotor thrusts to total force/torque:
+# [F; tau] = unmixing @ [fr; fl]
+unmixing = np.array([
+    [1.0, 1.0],
+    [d,   -d ],
+], dtype=float)
+
+# Inverse map from total force/torque to individual rotor thrusts:
+# [fr; fl] = mixing @ [F; tau]
+mixing = np.linalg.inv(unmixing)
+# which equals:
+# mixing = np.array([
+#     [0.5,       1.0/(2.0*d)],
+#     [0.5,      -1.0/(2.0*d)],
+# ], dtype=float)
+
+# motor_thrusts = np.array([[fr], [fl]], dtype=float)
+
+
+
 mu = 0.1  # kg/s
 g = 9.81  # m/s^2
 F_wind = 0.0  # wind disturbance force is zero in initial homeworks
@@ -32,13 +59,8 @@ t_plot = 0.1  # the plotting and animation is updated at this rate
 max_thrust = 10.0  # Max thrust produced by each motor, N
 
 # mixing matrix
-<<<<<<< HEAD
 mixing = np.linalg.inv(np.array([[1.0, 1.0], [d, -d]]))
 
 # equilibrium force 
 Fe = (mc + 2.0 * mr) * g  
 
-=======
-unmixing = np.array([[1.0, 1.0], [d, -d]]) # converts fr and fl (RL) to force and torque (FT)
-mixing = np.linalg.inv(unmixing) # converts force and torque (FT) to fr and fl (RL)
->>>>>>> 4318175bc1a9fe8876995dc205f915a25f34e701

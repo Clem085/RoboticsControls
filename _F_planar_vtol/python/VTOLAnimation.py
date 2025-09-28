@@ -24,7 +24,6 @@ class VTOLAnimation:
         self.flagInit = True                  # Used to indicate initialization
         self.fig, self.ax = plt.subplots()    # Initializes a figure and axes object
         self.handle = []                      # Initializes a list object that will
-<<<<<<< HEAD
         # be used to contain handles to the
         # patches and line objects.
         # <<< ORIGINAL
@@ -41,14 +40,6 @@ class VTOLAnimation:
                 -0.2 * P.length, P.length + pad])
         # NEW >>>
         # Create exit button
-=======
-                                              # be used to contain handles to the
-                                              # patches and line objects.
-        plt.plot([0, P.length], [0, 0], 'k')  # Draw a base line
-        plt.axis([-P.length/5, P.length + P.length/5]*2)  # Change the x,y axis limits
-
-        # add exit button
->>>>>>> 4318175bc1a9fe8876995dc205f915a25f34e701
         self.button_ax = plt.axes([0.8, 0.805, 0.1, 0.075])  # [left, bottom, width, height]
         self.exit_button = Button(self.button_ax, label='Exit', color='r',)
         self.exit_button.label.set_fontweight('bold')

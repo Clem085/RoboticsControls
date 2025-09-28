@@ -46,14 +46,13 @@ class massAnimation:
         signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     def update(self, u):
-        # Process inputs to function
-        z = x[0][0]   # position of mass, m # Connor Modified
+        z = u[0][0]
         self.drawWeight(z)
         self.drawSpring(z)
-
-        # After each function has been called, initialization is over.
-        if self.flagInit == True:
+        if self.flagInit:
             self.flagInit = False
+
+
 
     def drawWeight(self, z):
         x = z-P.width/2.0  # x coordinate

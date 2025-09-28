@@ -1,93 +1,91 @@
-import numpy as np 
+import numpy as np
 import VTOLParam as P
 
 
-class VTOLDynamics:
-    def __init__(self, alpha = 0.0):
-        # Initial state conditions
+class Dynamics:
+    def __init__(self, alpha: float = 0.0):
+        # initial state as a column vector (6x1)
         self.state = np.array([
-            [P.z0],  # initial lateral position
-            [P.h0],  # initial altitude
-            [P.theta0],  # initial roll angle
-            [P.zdot0],  # initial lateral velocity
-            [P.hdot0],  # initial climb rate
-            [P.thetadot0],  # initial angular velocity
-        ])
-        #################################################
-        # The parameters for any physical system are never known exactly. Feedback
-        # systems need to be designed to be robust to this uncertainty. In the simulation
-        # we model uncertainty by changing the physical parameters by a uniform random variable
-        # that represents alpha*100 % of the parameter, i.e., alpha = 0.2, means that the parameter
-        # may change by up to 20%. A different parameter value is chosen every time the simulation
-        # is run. This solution does not require the "alpha" parameter to be defined unless we want
-        # to model uncertainty in our model. This is something that comes later in the book when
-        # doing feedback control.
-        #################################################
-        self.mc = P.mc * (1+2*alpha*np.random.rand()-alpha)
-        self.mr = P.mr * (1+2*alpha*np.random.rand()-alpha)
-        self.Jc = P.Jc * (1+2*alpha*np.random.rand()-alpha)
-        self.d = P.d * (1+2*alpha*np.random.rand()-alpha)
-        self.mu = P.mu * (1+2*alpha*np.random.rand()-alpha)
-        self.F_wind = P.F_wind * (1+2*alpha*np.random.rand()-alpha)
+            [P.z0],       # lateral position
+            [P.h0],       # altitude
+            [P.theta0],   # roll angle
+            [P.zdot0],    # lateral velocity
+            [P.hdot0],    # climb rate
+            [P.thetadot0] # angular velocity
+        ], dtype=float)
 
-    def update(self, u):
-        # This is the external method that takes the input u at time
-        # t and returns the output y at time t.
-        self.rk4_step(u)  # propagate the state by one time sample
-        # separating out "y" by itself is currently not required, but will be in future homework
-        y = self.h()  # using a measurement model, return the corresponding output
-        return y
+        # sample time available to RK4
+        self.Ts = float(P.Ts)
 
-    # # F.2: Run Anything
-    # def f(self, state, u):
-    #     #  Return xdot = f(x,u)
-    #     z = state[0][0]
-    #     h = state[1][0]
-    #     theta = state[2][0]
-    #     zdot = state[3][0]
-    #     hdot = state[4][0]
-    #     thetadot = state[5][0]
-    #     fr = u[0][0]
-    #     fl = u[1][0]
-    #     # The equations of motion.
-    #     zddot = (-(fr + fl) * np.sin(theta) + -self.mu * zdot + self.F_wind) / (self.mc + 2.0 * self.mr)
-    #     hddot = (-(self.mc + 2.0 * self.mr) * P.g + (fr + fl) * np.cos(theta)) / (self.mc + 2.0 * self.mr)
-    #     thetaddot = self.d * (fr - fl) / (self.Jc + 2.0 * self.mr * (self.d ** 2))
-    #     # build xdot and return
-    #     xdot = np.array([[zdot], [hdot], [thetadot], [zddot], [hddot], [thetaddot]])
-    #     return xdot
-    #
-    # F3: Run Equations of Motion
-    # _F_planar_vtol/python/VTOLDynamics.py (snippet)
-    def f(state, u, P):
-        zv, h, th, zdot, hdot, thdot = state
-        fr, fl = u  # or pass F, tau and compute fr,fl via mapping in F.4
+        # randomized physical params (robustness modeling)
+        urand = lambda: (1 + 2 * alpha * np.random.rand() - alpha)
+        self.mc = P.mc * urand()
+        self.mr = P.mr * urand()
+        self.Jc = P.Jc * urand()
+        self.d  = P.d  * urand()
+        self.mu = P.mu * urand()
+        # allow wind force but keep zero if your P has 0
+        self.F_wind = getattr(P, "F_wind", 0.0) * urand()
+
+    # ---------- helpers ----------
+    @staticmethod
+    def _as_col(x: np.ndarray, n: int) -> np.ndarray:
+        x = np.asarray(x, dtype=float)
+        if x.shape == (n,):
+            return x.reshape(n, 1)
+        if x.shape == (n, 1):
+            return x
+        raise ValueError(f"x must have shape {(n,)} or {(n,1)}, got {x.shape}")
+
+    @staticmethod
+    def _match_shape(vec: np.ndarray, like: np.ndarray) -> np.ndarray:
+        """Return vec with the same 1D/2D (column) shape as like."""
+        return vec.flatten() if like.ndim == 1 else vec.reshape(like.shape)
+
+    # ---------- dynamics ----------
+    def f(self, state: np.ndarray, u: np.ndarray) -> np.ndarray:
+        """
+        xdot = f(x,u) for planar VTOL
+        state: (6,) or (6,1) -> [z, h, th, zdot, hdot, thdot]
+        u: (2,) or (2,1) -> [fr, fl]
+        returns derivative in the SAME shape as `state`
+        """
+        x = self._as_col(state, 6)
+        uu = self._as_col(u, 2)
+
+        z, h, th, zdot, hdot, thdot = x[:, 0]
+        fr, fl = uu[:, 0]
+
+        # total mass/inertia (textbook F.3)
+        mT = self.mc + 2.0 * self.mr
+        JT = self.Jc + 2.0 * self.mr * (self.d ** 2)
+
         F = fr + fl
-        tau = P.d * (fr - fl)
+        tau = self.d * (fr - fl)
 
-        mT = P.mc + P.mr + P.ml
-        JT = P.Jc + (P.mr + P.ml) * P.d**2
+        zddot  = ( -F * np.sin(th) - self.mu * zdot + self.F_wind ) / mT
+        hddot  = (  F * np.cos(th) - mT * P.g ) / mT
+        thddot =   tau / JT
 
-        zddot = (-F*np.sin(th) - P.mu*zdot) / mT
-        hddot = ( F*np.cos(th) - mT*P.g ) / mT
-        thddot = tau / JT
+        xdot = np.array([zdot, hdot, thdot, zddot, hddot, thddot], dtype=float)
+        return self._match_shape(xdot, state)
 
-        return np.array([zdot, hdot, thdot, zddot, hddot, thddot])
+    def h(self) -> np.ndarray:
+        """measurement model y = [z, h, theta]^T"""
+        z = float(self.state[0, 0])
+        h = float(self.state[1, 0])
+        theta = float(self.state[2, 0])
+        return np.array([[z], [h], [theta]], dtype=float)
 
-
-    def h(self):
-        # return y=h(x)
-        z = self.state.item(0)
-        h = self.state.item(1)
-        theta = self.state.item(2)
-        y = np.array([[z], [h], [theta]])
-        return y
-
-    def rk4_step(self, u):
-        # Integrate ODE using Runge-Kutta RK4 algorithm
+    def rk4_step(self, u: np.ndarray) -> None:
+        """one RK4 step on internal state"""
         F1 = self.f(self.state, u)
-        F2 = self.f(self.state + P.Ts / 2 * F1, u)
-        F3 = self.f(self.state + P.Ts / 2 * F2, u)
-        F4 = self.f(self.state + P.Ts * F3, u)
-        self.state = self.state + self.Ts / 6 * (F1 + 2*F2 + 2*F3 + F4)
+        F2 = self.f(self.state + self.Ts / 2 * F1, u)
+        F3 = self.f(self.state + self.Ts / 2 * F2, u)
+        F4 = self.f(self.state + self.Ts * F3, u)
+        self.state = self.state + self.Ts / 6 * (F1 + 2 * F2 + 2 * F3 + F4)
 
+    def update(self, u: np.ndarray) -> np.ndarray:
+        """external API: advance state and return measurement"""
+        self.rk4_step(u)
+        return self.h()
