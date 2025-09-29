@@ -1,40 +1,55 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import hummingbirdParam as P
-from signalGenerator import SignalGenerator
 from hummingbirdAnimation import HummingbirdAnimation
 from dataPlotter import DataPlotter
 from hummingbirdDynamics import HummingbirdDynamics
+from ctrlEquilibrium import ctrlEquilibrium
 
-
-# instantiate the hummingbird dyanmics
+# dynamics
 hummingbird = HummingbirdDynamics(alpha=0.0)
 
-# instantiate the simulation plots and animation
+# tiny PD trim (for the “poke → settle” demo)
+Kp = 0.05   # per rad
+Kd = 0.02   # per rad/s
+
+# equilibrium controller: F = Fe, tau = 0
+ctrl = ctrlEquilibrium()
+
+# plots/animation
 dataPlot = DataPlotter()
 animation = HummingbirdAnimation()
 
-t = P.t_start  # time starts at t_start
-while t < P.t_end:  # main simulation loop
-
-    # Propagate dynamics at rate Ts
+t = P.t_start
+while t < P.t_end:
     t_next_plot = t + P.t_plot
     while t < t_next_plot:
-        ref = np.array([[0.], [0.], [0.]])
-        pwm_right = 0.38
-        pwm_left = 0.38
-        u = np.array([[pwm_left], [pwm_right]])
-        y = hummingbird.update(u)  # Propagate the dynamics
-        t = t + P.Ts  # advance time by Ts
+        # base open-loop equilibrium command
+        u_pwm, _ = ctrl.update(hummingbird.state)
 
-    # update animation and data plots at rate t_plot
+        # # optional excite: +5% thrust for first 0.5 s
+        # if t < 0.5:
+        #     u_pwm = 1.05 * u_pwm
+
+        # PD trim around equilibrium on pitch (negative feedback)
+        theta  = float(hummingbird.state[1,0])
+        thetad = float(hummingbird.state[4,0])
+        corr = -Kp*theta - Kd*thetad
+        u_pwm = u_pwm + np.array([[corr],[corr]], dtype=float)
+
+        # clamp to [0,1]
+        u_pwm = np.clip(u_pwm, 0.0, 1.0)
+
+        # step dynamics
+        y = hummingbird.update(u_pwm)
+        t += P.Ts
+
+    # update visuals (pass u_pwm, not 'u')
     animation.update(t, hummingbird.state)
-    dataPlot.update(t, hummingbird.state, u)
+    dataPlot.update(t, hummingbird.state, u_pwm)
 
-    # the pause causes figure to be displayed during simulation
     plt.pause(0.05)
 
-# Keeps the program from closing until the user presses a button.
 print('Press key to close')
 plt.waitforbuttonpress()
 plt.close()

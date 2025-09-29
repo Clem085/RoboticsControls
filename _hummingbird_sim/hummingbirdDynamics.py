@@ -1,182 +1,148 @@
+# hummingbirdDynamics.py
 import numpy as np
 import hummingbirdParam as P
 
-# can use the following if you saved numpy versions of your SymPy functions
-# import dill
-# dill.settings['recurse'] = True
-
+def _saturate(u, lo, hi):
+    if isinstance(u, float) or np.isscalar(u):
+        return max(min(u, hi), lo)
+    u = np.array(u, dtype=float).copy()
+    for i in range(u.shape[0]):
+        u[i][0] = max(min(u[i][0], hi), lo)
+    return u
 
 class HummingbirdDynamics:
-    def __init__(self, alpha=0.0):
-        # Initial state conditions
-        self.state = np.array([
-            [P.phi0],  # roll angle
-            [P.theta0],  # pitch angle
-            [P.psi0],  # yaw angle
-            [P.phidot0],  # roll rate
-            [P.thetadot0],  # pitch rate
-            [P.psidot0],  # yaw rate
-        ])
+    """
+    State x = [phi, theta, psi, phidot, thetadot, psidot]^T  (6x1 column)
+    Input u = [[pwm_left],[pwm_right]] in [0,1]
+    """
+    def __init__(self, alpha: float = 0.0, integrator: str = "rk4"):
+        self.alpha = float(alpha)
+        self.integrator = integrator
+        # initialize state from parameter file
+        self.state = np.array([[P.phi0],
+                               [P.theta0],
+                               [P.psi0],
+                               [P.phidot0],
+                               [P.thetadot0],
+                               [P.psidot0]], dtype=float)
+        # small viscous damping on generalized rates
+        self._B = 1.0e-3 * np.eye(3)
+        self._Ts = float(P.Ts)
 
-        # vary the actual physical parameters
-        self.ell1 = P.ell1 * (1.+alpha*(2.*np.random.rand()-1.))
-        self.ell2 = P.ell2 * (1.+alpha*(2.*np.random.rand()-1.))
-        self.ell3x = P.ell3x * (1.+alpha*(2.*np.random.rand()-1.))
-        self.ell3y = P.ell3y * (1.+alpha*(2.*np.random.rand()-1.))
-        self.ell3z = P.ell3z * (1.+alpha*(2.*np.random.rand()-1.))
-        self.ellT = P.ellT * (1.+alpha*(2.*np.random.rand()-1.))
-        self.d = P.d * (1.+alpha*(2.*np.random.rand()-1.))
-        self.m1 = P.m1 * (1.+alpha*(2.*np.random.rand()-1.))
-        self.m2 = P.m2 * (1.+alpha*(2.*np.random.rand()-1.))
-        self.m3 = P.m3 * (1.+alpha*(2.*np.random.rand()-1.))
-        self.J1x = P.J1x * (1.+alpha*(2.*np.random.rand()-1.))
-        self.J1y = P.J1y * (1. + alpha * (2. * np.random.rand() - 1.))
-        self.J1z = P.J1z * (1. + alpha * (2. * np.random.rand() - 1.))
-        self.J2x = P.J2x * (1.+alpha*(2.*np.random.rand()-1.))
-        self.J2y = P.J2y * (1. + alpha * (2. * np.random.rand() - 1.))
-        self.J2z = P.J2z * (1. + alpha * (2. * np.random.rand() - 1.))
-        self.J3x = P.J3x * (1.+alpha*(2.*np.random.rand()-1.))
-        self.J3y = P.J3y * (1. + alpha * (2. * np.random.rand() - 1.))
-        self.J3z = P.J3z * (1. + alpha * (2. * np.random.rand() - 1.))
-        self.km = P.km * (1. + alpha * (2. * np.random.rand() - 1.))
-        self.beta = 0.001 # friction coefficient from lab manual
-
-        # store the parameters in a list for easy access
-        self.param_vals = [self.m1, self.m2, self.m3,
-                           self.J1x, self.J1y, self.J1z,
-                           self.J2x, self.J2y, self.J2z,
-                           self.J3x, self.J3y, self.J3z,
-                           self.ell1, self.ell2, self.ell3x,
-                           self.ell3y, self.ell3z, self.ellT, self.d]
-
-        # if you used the 'h3_generate_E-L.py" file to generate the functions,
-        # and you saved them using dill, you can load them here
-        #   self.M_func = dill.load(open("hb_M_func.pkl", "rb"))
-        #   self.C_func = dill.load(open("hb_C_func.pkl", "rb"))
-        #   self.dP_dq_func = dill.load(open("hb_dP_dq_func.pkl", "rb"))
-        #   self.tau_func = dill.load(open("hb_tau_func.pkl", "rb"))
-        # Once loaded, youc an also use them in the self.M, self.C, self.dP_dq, and self.tau function
-        # definitions below.
-
-        self.B = #TODO define the friction-based matrix of coefficients
-
-
-    def update(self, u: np.ndarray):
-        # This is the external method that takes the input u at time
-        # t and returns the output y at time t.
-        # later, we'll add a function to saturate the input forces
-        self.rk4_step(u)  # propagate the state by one time sample
-        y = self.h()  # return the corresponding output
+    # public API expected by your sim
+    def update(self, u_pwm: np.ndarray):
+        u_pwm = _saturate(u_pwm, 0.0, 1.0)  # clamp PWM to [0,1]
+        if self.integrator == "rk4":
+            self.state = self._rk4_step(self.state, u_pwm, self._Ts)
+        else:
+            self.state = self._euler_step(self.state, u_pwm, self._Ts)
+        # return measured outputs (angles)
+        y = self.state[0:3].copy()
         return y
 
-    def f(self, state: np.ndarray, u: np.ndarray):
-        # Return xdot = f(x,u)
-        phidot = state[3][0]
-        thetadot = state[4][0]
-        psidot = state[5][0]
+    # ---------- integrators ----------
+    def _euler_step(self, x, u, Ts):
+        return x + Ts * self._f(x, u)
 
-        # TODO fill out the equations for each of the following in their
-        # definitions below.
-        M = self.M(state)
-        C = self.C(state)
-        dP_dq = self.dP_dq(state)
-        tau = self.tau(state, u)
+    def _rk4_step(self, x, u, Ts):
+        k1 = self._f(x, u)
+        k2 = self._f(x + 0.5*Ts*k1, u)
+        k3 = self._f(x + 0.5*Ts*k2, u)
+        k4 = self._f(x + Ts*k3, u)
+        return x + (Ts/6.0)*(k1 + 2*k2 + 2*k3 + k4)
 
-        # TODO write an expression for qddot from the lab manual equations,
-        # remember that it will be in terms of M, C, dP_dq, -Bqdot, and tau
-        # (but all of them will be numerical values, not functions)
-        qddot =
+    # ---------- continuous dynamics ----------
+    def _f(self, x, u_pwm):
+        # unpack state
+        phi, theta, psi, phid, thetad, psid = [x[i,0] for i in range(6)]
+        q    = np.array([phi, theta, psi])
+        qdot = np.array([phid, thetad, psid])
 
-        # define the second derivatives from qddot
-        phiddot = qddot[0][0]
-        thetaddot = qddot[1][0]
-        psiddot = qddot[2][0]
+        # PWM -> total force F and roll torque tau_phi
+        uL = float(u_pwm[0,0]); uR = float(u_pwm[1,0])
+        # From your controller scaffold: force = km*(uL+uR), torque = km*d*(uL-uR)
+        F_total = P.km * (uL + uR)
+        tau_phi = P.km * P.d * (uL - uR)
 
-        # build xdot and return it
-        xdot = np.array([[phidot],
-                         [thetadot],
-                         [psidot],
-                         [phiddot],
-                         [thetaddot],
-                         [psiddot]])
+        # generalized input τ(q,u)
+        tau = self._tau_gen(q, F_total, tau_phi)
+
+        # dynamics pieces
+        M = self._M(q)
+        C = self._C(q, qdot)
+        dP_dq = self._dP_dq(q)
+
+        # qddot
+        qddot = np.linalg.solve(M, tau - self._B @ qdot - C - dP_dq)
+
+        xdot = np.array([[phid],
+                         [thetad],
+                         [psid],
+                         [qddot[0]],
+                         [qddot[1]],
+                         [qddot[2]]], dtype=float)
         return xdot
 
-    def h(self):
-        # TODO Fill in this function using self.state
-        # return y = h(x)
-        phi =
-        theta =
-        psi =
-        y = np.array([[phi], [theta], [psi]])
-        return y
+    # ---------- model pieces (Chapter 3) ----------
+    def _M(self, q):
+        phi, theta, _ = q
+        c = np.cos; s = np.sin
+        cphi, sphi = c(phi), s(phi)
+        cth,  sth  = c(theta), s(theta)
 
-    def rk4_step(self, u: np.ndarray):
-        # Integrate ODE using Runge-Kutta RK4 algorithm
-        F1 = self.f(self.state, u)
-        F2 = self.f(self.state + P.Ts / 2 * F1, u)
-        F3 = self.f(self.state + P.Ts / 2 * F2, u)
-        F4 = self.f(self.state + P.Ts * F3, u)
-        self.state = self.state + P.Ts / 6 * (F1 + 2*F2 + 2*F3 + F4)
+        M22 = (P.m1*P.ell1**2 + P.m2*P.ell2**2 + P.J2y
+               + P.J1y*cphi**2 + P.J1z*sphi**2)
+        M23 = (P.J1y - P.J1z)*sphi*cphi*cth
+        M33 = ((P.m1*P.ell1**2 + P.m2*P.ell2**2 + P.J2z
+                + P.J1y*sphi**2 + P.J1z*cphi**2)*(cth**2)
+               + (P.J1x + P.J2x)*(sth**2)
+               + P.m3*(P.ell3x**2 + P.ell3y**2) + P.J3z)
 
-    def M(self, state: np.ndarray, param_vals: list):
-        # TODO Fill in this function
-        #extract any necessary variables from the state and use them
+        M = np.array([[P.J1x,          0.0,        -P.J1x*sth],
+                      [0.0,            M22,         M23       ],
+                      [-P.J1x*sth,     M23,         M33       ]], dtype=float)
+        return M
 
-        # Fill out M22, M23, and M33
-        M22 =
-        M23 =
-        M33 =
+    def _C(self, q, qdot):
+        phi, theta, _      = q
+        phid, thetad, psid = qdot
+        c = np.cos; s = np.sin
+        cphi, sphi = c(phi), s(phi)
+        cth,  sth  = c(theta), s(theta)
+        c2phi, s2phi = cphi**2, sphi**2
 
-        # Return the M matrix
-        return np.array([[, , ],
-                         [, , ],
-                         [, , ]])
+        A = (P.J1y - P.J1z)
 
-    def C(self, state: np.ndarray, param_vals: list):
-        # TODO Fill in this function
-        #extract any necessary variables from the state and use them
+        # Row-grouped compact form matching the manual’s structure
+        term1 = A*sphi*cphi*(thetad**2 - (cth**2)*(psid**2)) \
+                + (A*(c2phi - s2phi) - P.J1x)*cth*thetad*psid
 
-        # Return the C matrix
-        return np.array([[],
-                         [],
-                         []])
+        term2 = -2*(P.J1z - P.J1y)*sphi*cphi*phid*thetad \
+                + (A*(c2phi - s2phi) + P.J1x)*cth*phid*psid \
+                - ( -P.m1*P.ell1**2 - P.m2*P.ell2**2 - P.J2z + P.J1x + P.J2x
+                    - P.J1y*s2phi - P.J1z*c2phi )*2*sth*cth*(psid**2)/1.0
 
-    def dP_dq(self, state: np.ndarray, param_vals: list):
-        # TODO Fill in this function
-        #extact any necessary variables from the state
+        term3 = (P.J1z - P.J1y)*sphi*cphi*sth*(thetad**2) \
+                + (A*(c2phi - s2phi) - P.J1x)*cth*phid*thetad \
+                + 2*A*sphi*cphi*phid*psid \
+                + 2*( -P.m1*P.ell1**2 - P.m2*P.ell2**2 - P.J2z + P.J1x + P.J2x
+                      + P.J1y*s2phi + P.J1z*s2phi )*sth*cth*thetad*psid
 
-        # Return the partialP array
-        return np.array([[],
-                         [],
-                         []])
+        return np.array([term1, term2, term3], dtype=float)
 
-    def tau(self, state: np.ndarray, u: np.ndarray, param_vals: list):
-        """
-        Returns the tau matrix as defined in the hummingbird manual.
-
-        Parameters
-        ----------
-        state : numpy.ndarray
-            The state of the hummingbird. Contains phi, theta, psi, and their derivatives.
-        u : numpy.ndarray
-            The input to the hummingbird. Contains f_l and f_r, the forces from the left
-            and right propellers.
-        param_vals : list
-            A list of the physical parameters of the hummingbird that can be used in SymPy
-            generated functions if needed.
-
-        """
-        # TODO Fill in this function
-        # extract any necessary variables from the state
-
-        # Return the tau matrix
-        return np.array([[],
-                         [],
-                         []])
+    def _dP_dq(self, q):
+        _, theta, _ = q
+        return np.array([
+            0.0,
+            (P.m1*P.ell1 + P.m2*P.ell2) * P.g * np.sin(theta),
+            0.0
+        ], dtype=float)
 
 
-def saturate(u: np.ndarray, limit: float):
-    for i in range(0, u.shape[0]):
-        if abs(u[i][0]) > limit:
-            u[i][0] = limit * np.sign(u[i][0])
-    return u
+    def _tau_gen(self, q, F_total, tau_phi):
+        phi, theta, _ = q
+        c = np.cos; s = np.sin
+        # roll input from differential thrust; other entries from geometry
+        tau_theta = P.ellT * F_total * c(phi)
+        tau_psi   = P.ellT * F_total * c(theta)*s(phi) - tau_phi * s(theta)
+        return np.array([tau_phi, tau_theta, tau_psi], dtype=float)
