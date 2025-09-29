@@ -14,9 +14,11 @@ class ctrlEquilibrium:
         pass
 
     def update(self, x):
-        # Equilibrium inputs: F=Fe, tau=0  -> [fl, fr] via mixing, then PWM via km
-        ft = np.array([[P.Fe], [0.0]])               # [F; tau]
-        fl_fr = P.mixing @ ft                        # [fl; fr]
+        # [F; tau] = [Fe; 0]
+        ft = np.array([[P.Fe], [0.0]])
+        # [fl; fr] = mixing @ [F; tau]
+        fl_fr = P.mixing @ ft
+        # PWM commands
         pwm = fl_fr / P.km
         pwm = saturate(pwm, 0.0, 1.0)
         return pwm

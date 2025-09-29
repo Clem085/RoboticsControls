@@ -1,33 +1,38 @@
 import numpy as np
 
-# Physical constants
-g = 9.81         # gravity [m/s^2]
+g = 9.81
 
-# Geometry and masses (plausible placeholder values)
-m1 = 0.06        # left rotor mass-equivalent [kg]
-m2 = 0.06        # right rotor mass-equivalent [kg]
-ell1 = 0.08      # left arm length [m]
-ell2 = 0.08      # right arm length [m]
-ellT = 0.10      # vertical offset (thrust arm) [m]
-d = 0.12         # half-rotor separation for roll moment [m]
+# Geometry (Appendix B)
+ell1 = 0.247      # m
+ell2 = -0.039     # m
+ell3x = -0.007    # m
+ell3y = -0.007    # m
+ell3z = 0.018     # m
+ellT = 0.355      # m
+d = 0.12          # m
 
-# Inertias about body axes (diagonal)
-Jphi = 1.8e-3    # roll inertia [kg m^2]
-Jtheta = 2.0e-3  # pitch inertia [kg m^2]
-Jpsi = 1.5e-3    # yaw inertia [kg m^2]
+# Masses
+m1 = 0.108862     # kg
+m2 = 0.4717       # kg
+m3 = 0.1905       # kg
 
-# Damping (viscous)
-b_phi = 1.0e-3
-b_theta = 1.0e-3
-b_psi = 1.0e-3
+# Inertias (diagonal) kg-m^2
+J1x, J1y, J1z = 0.000189, 0.001953, 0.001894
+J2x, J2y, J2z = 0.000231, 0.003274, 0.003416
+J3x, J3y, J3z = 0.0002222, 0.0001956, 0.000027
 
-# Motor -> force gain
-km = 0.8         # [N per unit PWM] (PWM in [0,1])
+# Damping (manual sets phi=0.001 on each axis)
+b_phi = 0.001
+b_theta = 0.001
+b_psi = 0.001
 
-# Integration
-Ts = 0.002       # sample time [s]
+# Motor gain (km is identified later; use a placeholder for sim)
+km = 0.8
 
-# Initial conditions (H.4 #1 requires zeros)
+# Integration step
+Ts = 0.002
+
+# Initial conditions
 phi0 = 0.0
 theta0 = 0.0
 psi0 = 0.0
@@ -35,14 +40,13 @@ phidot0 = 0.0
 thetadot0 = 0.0
 psidot0 = 0.0
 
-# Equilibrium thrust for hover at theta_e = 0
+# Hover equilibrium (theta_e = 0) from the manual
 Fe = ((m1*ell1 + m2*ell2) * g) / ellT
 
-# Mixing: [fl; fr] = mixing @ [F; tau]
-# F = fl + fr, tau = d(fl - fr)  => mixing = [[1/2, 1/(2d)], [1/2, -1/(2d)]]
+# Mixing / Unmixing
+# [fl; fr] = mixing @ [F; tau],  with  F = fl + fr,  tau = d(fl - fr)
 mixing = np.array([[0.5,  1.0/(2.0*d)],
                    [0.5, -1.0/(2.0*d)]])
-
-# Unmixing: [F; tau] = unmixing @ [fl; fr]  => [[1,1],[d,-d]]
+# [F; tau] = unmixing @ [fl; fr]
 unmixing = np.array([[1.0, 1.0],
                      [d,   -d]])
