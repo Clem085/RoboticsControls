@@ -19,7 +19,7 @@ class HummingbirdDynamics:
             [P.psidot0],
         ])
         # optional motor variability
-        self.km = P.km * (1. + alpha * (2. * np.random.rand() - 1.))
+        # self.km = P.km * (1. + alpha * (2. * np.random.rand() - 1.))
 
     def h(self):
         # measured outputs (angles)

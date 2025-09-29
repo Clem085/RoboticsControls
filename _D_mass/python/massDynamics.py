@@ -2,12 +2,11 @@ import numpy as np
 from typing import Tuple, Optional
 import massParam as P
 
-
 class massDynamics:
     """
     Mass–spring–damper (1D):
-      x = [z, zdot]
-      zddot = (u - b*zdot - k*z)/m
+      x = [z, zdot]^T
+      zddot = (F - b*zdot - k*z)/m
     """
 
     def __init__(self,
@@ -31,7 +30,40 @@ class massDynamics:
             raise ValueError("integrator must be 'rk4' or 'euler'")
         self._integrator = integrator.lower()
 
-    # ---------- helpers ----------
+    # ---------- D.6: state-space matrices ----------
+    def A(self) -> np.ndarray:
+        m, b, k = self.m, self.b, self.k
+        return np.array([[0.0,      1.0],
+                         [-k/m,  -b/m]])
+
+    def B(self) -> np.ndarray:
+        m = self.m
+        return np.array([[0.0],
+                         [1.0/m]])
+
+    def C(self) -> np.ndarray:
+        # measured output y = z
+        return np.array([[1.0, 0.0]])
+
+    def D(self) -> np.ndarray:
+        return np.array([[0.0]])
+
+    def ss(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Convenience: return (A,B,C,D)."""
+        return self.A(), self.B(), self.C(), self.D()
+
+    # ---------- D.5: transfer function Z(s)/F(s) ----------
+    def tf(self) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Return TF numerator/denominator arrays for G_{zF}(s) = Z(s)/F(s)
+        = 1 / (m s^2 + b s + k).
+        """
+        m, b, k = self.m, self.b, self.k
+        num = np.array([1.0])          # numerator = 1
+        den = np.array([m, b, k], float)
+        return num, den
+
+    # ---------- dynamics ----------
     @staticmethod
     def _as_col2(x: np.ndarray) -> np.ndarray:
         x = np.asarray(x, dtype=float)
@@ -45,13 +77,11 @@ class massDynamics:
     def _match_shape(vec: np.ndarray, like: np.ndarray) -> np.ndarray:
         return vec.flatten() if like.ndim == 1 else vec.reshape(like.shape)
 
-    # ---------- dynamics ----------
     def f(self, x: np.ndarray, u: float | np.ndarray) -> np.ndarray:
         """
         xdot = f(x,u)
-        x: (2,) or (2,1) -> [z, zdot]
-        u: scalar or shape compatible with scalar
-        returns derivative in the SAME shape as `x`
+        x: [z, zdot], shape (2,) or (2,1)
+        u: scalar force F
         """
         xcol = self._as_col2(x)
         z, zdot = xcol[:, 0]
@@ -67,6 +97,14 @@ class massDynamics:
         else:
             self.state = self._euler(self.state, u, self.Ts)
         return self.state
+
+    # output equation y = Cx + Du
+    def output(self, u: float | np.ndarray = 0.0) -> float:
+        C, D = self.C(), self.D()
+        x = self.state
+        F = float(np.asarray(u).squeeze())
+        y = (C @ x + D * F).item()
+        return y
 
     # ---------- integrators ----------
     def _rk4(self, x: np.ndarray, u: float | np.ndarray, Ts: float) -> np.ndarray:

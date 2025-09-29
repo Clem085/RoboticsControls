@@ -83,3 +83,38 @@ D=\begin{bmatrix}
 0&0
 \end{bmatrix}.
 $$
+
+
+# HW3 Testing — F Section (VTOL)
+
+This mirrors your D-section test notes, but for **F.5 (transfer functions)** and **F.6 (linear state space)** using the hover-linearized VTOL.
+
+---
+
+## 1) VTOL dynamics unit tests (nonlinear `Dynamics.f(x,u)`)
+
+**Run**
+```bash
+C:/Users/consa/Downloads/Programming/Robotics_Controls/.venv/Scripts/python.exe ^
+  c:/Users/consa/Downloads/Programming/Robotics_Controls/_F_planar_vtol/python/testDynamics.py
+```
+
+**Expect**
+- The script executes without errors and reports each derivative check as **PASS** (exact text may differ from the mass test).
+- This validates your **nonlinear** `Dynamics.f(x,u)` ODE (rotor inputs `[f_r,f_l]`) still behaves.
+
+> Tip: If you previously saw `AttributeError: VTOLParam has no attribute 'unmixing'`, make sure `VTOLParam.py` defines `mixing` (used to map `[F; τ] → [f_r; f_l]`). The linear demo uses `P.mixing`.
+
+---
+
+## 2) Linear hover model + animation (`runVTOLAnimation.py`)
+![alt text](image.png)
+
+**Run**
+```bash
+C:/Users/consa/Downloads/Programming/Robotics_Controls/.venv/Scripts/python.exe ^
+  c:/Users/consa/Downloads/Programming/Robotics_Controls/_F_planar_vtol/python/runVTOLAnimation.py
+```
+
+**What the program does**
+- Simulates the **F.6 linear state-space

@@ -54,3 +54,54 @@ $$
 y=\underbrace{\begin{bmatrix}1\;0\end{bmatrix}}_{C}x+\underbrace{[0]}_{D}u.
 $$
 
+# HW3 Testing — D Section (Spring Mass)
+## 1. massDynamics.py
+### Run massDynamics.py
+Expect all Tests (1-10) to pass
+```bash
+C:/Users/consa/Downloads/Programming/Robotics_Controls/.venv/Scripts/python.exe c:/Users/consa/Downloads/Programming/Robotics_Controls/_D_mass/python/testDynamics.py
+```
+
+### Output
+```fortran
+Test  1: PASS
+Test  2: PASS
+Test  3: PASS
+Test  4: PASS
+Test  5: PASS
+Test  6: PASS
+Test  7: PASS
+Test  8: PASS
+Test  9: PASS
+Test 10: PASS
+
+Excellent work!! The f(x,u) function from your dynamics file has passed all of the tests!
+```
+
+## 2. runMassAnimation.py
+
+### Run runMassAnimation.py
+```bash
+C:/Users/consa/Downloads/Programming/Robotics_Controls/.venv/Scripts/python.exe c:/Users/consa/Downloads/Programming/Robotics_Controls/_D_mass/python/runMassAnimation.py
+```
+### Output
+Expect smooth oscillatory position response to the sinusoidal force 
+![alt text](image.png)
+
+```fortran
+D.5 transfer function Z/F: num = [1.]  den = [5.  0.5 3. ]
+D.6 state space:
+A=
+ [[ 0.   1. ]
+ [-0.6 -0.1]]
+B=
+ [[0. ]
+ [0.2]]
+C=
+ [[1. 0.]]
+D=
+ [[0.]]
+Close the figure window to end.
+```
+
+
