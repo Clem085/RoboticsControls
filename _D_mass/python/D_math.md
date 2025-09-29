@@ -1,54 +1,56 @@
-# D.3 Mass–Spring–Damper: Equations of Motion
+# D.5 — Mass–Spring–Damper: Transfer-function model
 
-**System:** point mass with spring \(k\), damper \(b\), position \(z\), external force \(F\).
+Given the standard equation of motion (zero initial conditions):
+$$
+m\,\ddot z(t)+b\,\dot z(t)+k\,z(t)=F(t).
+$$
+
+**(a) Laplace transform (time → s-domain).**
+$$
+m\,s^2 Z(s)+b\,s\,Z(s)+k\,Z(s)=F(s).
+$$
+
+**(b) Transfer function $G_{zF}(s)=Z(s)/F(s)$.**
+$$
+G_{zF}(s)=\frac{1}{m s^2+b s+k}
+=\frac{\tfrac{1}{m}}{s^2+\tfrac{b}{m}s+\tfrac{k}{m}}.
+$$
+
+**(c) Block diagram (text description).**
+- Single block $G_{zF}(s)=1/(m s^2+b s+k)$ from input $F$ to output $z$.
+- Equivalent signal flow:
+  - Sum node (net force): $F - b\,\dot z - k\,z$.
+  - Gain $1/m$ → acceleration $\ddot z$.
+  - Two cascaded integrators $1/s$ → $\dot z$ then $z$.
+  - Feedback taps: $k$ from $z$ and $b$ from $\dot z$ into the sum node.
 
 ---
 
-### (a) Potential energy
+# D.6 — Mass–Spring–Damper: State-space model
+
+Let
 $$
-P(z)=\frac{1}{2}\,k\,z^{2}.
+x=\begin{bmatrix}z\\ \dot z\end{bmatrix},\quad
+u=F,\quad
+y=z.
 $$
 
-### (b) Generalized coordinate
+From $m\,\ddot z+b\,\dot z+k\,z=F$:
 $$
-q=z.
-$$
-
-### (c) Generalized and damping forces
-Generalized force along \(z\): \( \tau = F \).
-
-Model viscous damping with the Rayleigh dissipation function
-$$
-\mathcal{R}=\frac{1}{2}\,b\,\dot z^{2}
-\quad\Rightarrow\quad
-Q_{\text{damp}}=-\frac{\partial \mathcal{R}}{\partial \dot z}=-b\,\dot z.
-$$
-Total nonconservative generalized force:
-$$
-Q = \tau + Q_{\text{damp}} = F - b\,\dot z.
-$$
-
-### (d) Euler–Lagrange with dissipation
-Kinetic energy \(K=\tfrac{1}{2} m \dot z^{2}\), Lagrangian \(L=K-P\).
-The Euler–Lagrange equation with nonconservative force \(Q\) is
-$$
-\frac{d}{dt}\left(\frac{\partial L}{\partial \dot z}\right)
--\frac{\partial L}{\partial z}= Q .
-$$
-Computing terms:
-\[
-\frac{\partial L}{\partial \dot z}= m\,\dot z,
+\dot x=
+\begin{bmatrix}
+\dot z\\ \ddot z
+\end{bmatrix}
+=
+\underbrace{\begin{bmatrix}
+0 & 1\\[2pt]
+-\tfrac{k}{m} & -\tfrac{b}{m}
+\end{bmatrix}}_{A}x
++
+\underbrace{\begin{bmatrix}
+0\\[2pt]\tfrac{1}{m}
+\end{bmatrix}}_{B}u,
 \qquad
-\frac{d}{dt}\left(\frac{\partial L}{\partial \dot z}\right)= m\,\ddot z,
-\qquad
-\frac{\partial L}{\partial z}= -k\,z.
-\]
-Therefore
-$$
-m\,\ddot z + k\,z = F - b\,\dot z.
+y=\underbrace{\begin{bmatrix}1\;0\end{bmatrix}}_{C}x+\underbrace{[0]}_{D}u.
 $$
 
-### Result (equation of motion)
-$$
-\boxed{\,m\,\ddot z + b\,\dot z + k\,z = F\, }.
-$$
