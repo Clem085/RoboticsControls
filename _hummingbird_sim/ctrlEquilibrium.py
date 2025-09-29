@@ -1,21 +1,16 @@
+# ctrlEquilibrium.py
 import numpy as np
 import hummingbirdParam as P
 
 class ctrlEquilibrium:
+    def __init__(self):
+        # Fe = (m1*ell1 + m2*ell2)*g / ellT
+        Fe = (P.m1*P.ell1 + P.m2*P.ell2) * P.g / P.ellT
+        # f_L = km*u_L, f_R = km*u_R  => u_L = u_R = Fe/(2*km)
+        self.u_eq = float(Fe / (2.0 * P.km))
+
     def update(self, x):
-        force_equilibrium =
-        force = force_equilibrium
-        torque = 0.
-        # convert force and torque to pwm signals
-        pwm =
-        pwm = saturate(pwm, 0, 1)
-        return pwm
-
-
-def saturate(u, low_limit, up_limit):
-    if isinstance(u, float) is True:
-        u = np.max((np.min((u, up_limit)), low_limit))
-    else:
-        for i in range(0, u.shape[0]):
-            u[i][0] = np.max((np.min((u[i][0], up_limit)), low_limit))
-    return u
+        pwm = np.array([[self.u_eq],
+                        [self.u_eq]], dtype=float)
+        refs = np.array([[0.0],[0.0],[0.0]])
+        return pwm, refs

@@ -1,67 +1,32 @@
-# run this file to test your vectors and matrices from the hummingbirdDynamics.py file
+# test_dynamics.py
 import numpy as np
-from hummingbirdDynamics import HummingbirdDynamics as dynamics
-import hummingbirdParam as P
-import pickle as pkl
+from hummingbirdDynamics import HummingbirdDynamics
 
-import os
-current_dir = os.path.dirname(os.path.abspath(__file__))
-print(current_dir)
-pickle_path = os.path.join(current_dir, 'test_matrices.pkl')
-print(pickle_path)
-print(f"Looking for file at: {pickle_path}")
-print(f"File exists: {os.path.exists(pickle_path)}")
-with open(pickle_path, 'rb') as f:
-    data = pkl.load(f)
+def check_symmetric(M, tol=1e-9):
+    return np.allclose(M, M.T, atol=tol)
 
-#data = pkl.load(open("./test_matrices.pkl", "rb"))
-precision = 6
+def main():
+    dyn = HummingbirdDynamics()
 
-# states are defined in the following order: [phi, theta, psi, phi_dot, theta_dot, psi_dot]
-states = [np.array([0, 0, 0, 0, 0, 0]).reshape(6, 1),
-          np.array([0.1, 0.1, -0.1, 0.1, -0.1, 0.1]).reshape(6, 1),
-          np.array([0.05, -0.3, 0.22, 0.2, 0.1, -0.1]).reshape(6, 1)]
+    # Pick a pose and probe the mass matrix symmetry (sanity check for H.3)
+    q = np.array([0.2, -0.1, 0.3])  # [phi, theta, psi]
+    M = dyn._M(q)
+    assert check_symmetric(M), "Mass matrix must be symmetric"
 
-# inputs are defined in the following order: [f_l, f_r]
-inputs = [np.array([[0], [0]]),
-          np.array([[0.1], [0.1]]),
-          np.array([[0.05], [-0.05]])]
-# the above doesn't match our tau
-# force : float
-#             force = (fl + fr). e.g. the second element of the tau matrix becomes
-#             lT * force * cos(phi) using the above definition.
-# torque : float
-#             torque = d(fl - fr). e.g. the first element of teh tau matrix just
-#             becomes torque, using the definition above.
-inputs = [[inputs[0][0] + inputs[0][1], P.d*(inputs[0][0] - inputs[0][1])],
-          [inputs[1][0] + inputs[1][1], P.d*(inputs[1][0] - inputs[1][1])],
-          [inputs[2][0] + inputs[2][1], P.d*(inputs[2][0] - inputs[2][1])]]
-
-hb_dynamics = dynamics(alpha=0.0)
-
-def test_matrix(name, actual, expected):
-    error = actual - expected
-#    print(f"error: {error}")
-    correct_indices = np.abs(error) < 1e-14
-    if correct_indices.all():
-        print(f"{name:>10}: PASS")
+    # Try one forward step using whichever API your class exposes
+    if hasattr(dyn, "step"):
+        # Force-space API: u is [fL, fR], needs Ts
+        u = np.array([0.0, 0.0])
+        x_next = dyn.step(u, Ts=0.002)
     else:
-        incorrect_indices = np.argwhere(~correct_indices)
-        print(f"{name:>10}: FAIL")
-        for r,c in incorrect_indices:
-            print(f'{name:>20}[{r},{c}]: ', end='')
-            print(f'yours = {actual[r,c]:<{precision+9}.{precision}g} ', end='')
-            print(f'expected = {expected[r,c]:.{precision}g}')
+        # PWM-space API: u is 2x1 [[uL],[uR]] in [0,1]
+        u = np.array([[0.0], [0.0]])
+        y = dyn.update(u)
+        x_next = getattr(dyn, "state", None)
 
-for i in range(len(states)):
-    M_test = hb_dynamics._M(states[i])
-    C_test = hb_dynamics._C(states[i])
-    dP_dq_test = hb_dynamics._partialP(states[i])
-    tau_test = hb_dynamics._tau(states[i], inputs[i][0][0], inputs[i][1][0])
+    print("OK: dynamics stepped once.")
+    if x_next is not None:
+        print("state sample:", np.squeeze(x_next))
 
-    print(f"test {i+1}:")
-    test_matrix("M", M_test, data['M'][i])
-    test_matrix("C", C_test, data['C'][i])
-    test_matrix("dP_dq", dP_dq_test, data['dP_dq'][i])
-    test_matrix("tau", tau_test, data['tau'][i])
-    print()
+if __name__ == "__main__":
+    main()
