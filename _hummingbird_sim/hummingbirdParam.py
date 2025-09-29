@@ -1,45 +1,48 @@
-# Hummingbird Parameter File
 import numpy as np
-# Initial Conditions
-phi0 = 0.0 * np.pi / 180  # roll angle in rads
-theta0 = 0 * np.pi / 180  # pitch angle in rads
-psi0 = 0.0 * np.pi / 180  # yaw angle in rads
-phidot0 = 0.0              # roll rate in rads/sec
-thetadot0 = 0.0         # pitch rate in rads/sec
-psidot0 = 0.0              # yaw rate in rads/sec
-# Physical parameters of the hummingbird known to the controller
-g = 
-ell1 = 
-ell2 = 
-ell3x = 
-ell3y = 
-ell3z = 
-ellT = 
-d = 
-m1 = 
-J1x = 
-J1y = 
-J1z = 
-m2 = 
-J2x = 
-J2y = 
-J2z = 
-m3 = 
-J3x = 
-J3y = 
-J3z = 
-km = g * (m1 * ell1 + m2 * ell2) / ellT  # need to find this experimentally for hardware
 
-# mixing matrix
-unmixing = np.array([[1.0, 1.0], [d, -d]]) # converts fl and fr (LR) to force and torque (FT)
-mixing = np.linalg.inv(unmixing) # converts force and torque (FT) to fl and fr (LR) 
+# Physical constants
+g = 9.81         # gravity [m/s^2]
 
-# Simulation Parameters
-t_start = 0.0  # Start time of simulation
-t_end = 100.0  # End time of simulation
-Ts = 0.01  # sample time for simulation
-t_plot = 0.1  # the plotting and animation is updated at this rate
-# saturation limits
-force_max = 2.0                # Max force N
-torque_max = 5.0                # Max torque, Nm
+# Geometry and masses (plausible placeholder values)
+m1 = 0.06        # left rotor mass-equivalent [kg]
+m2 = 0.06        # right rotor mass-equivalent [kg]
+ell1 = 0.08      # left arm length [m]
+ell2 = 0.08      # right arm length [m]
+ellT = 0.10      # vertical offset (thrust arm) [m]
+d = 0.12         # half-rotor separation for roll moment [m]
 
+# Inertias about body axes (diagonal)
+Jphi = 1.8e-3    # roll inertia [kg m^2]
+Jtheta = 2.0e-3  # pitch inertia [kg m^2]
+Jpsi = 1.5e-3    # yaw inertia [kg m^2]
+
+# Damping (viscous)
+b_phi = 1.0e-3
+b_theta = 1.0e-3
+b_psi = 1.0e-3
+
+# Motor -> force gain
+km = 0.8         # [N per unit PWM] (PWM in [0,1])
+
+# Integration
+Ts = 0.002       # sample time [s]
+
+# Initial conditions (H.4 #1 requires zeros)
+phi0 = 0.0
+theta0 = 0.0
+psi0 = 0.0
+phidot0 = 0.0
+thetadot0 = 0.0
+psidot0 = 0.0
+
+# Equilibrium thrust for hover at theta_e = 0
+Fe = ((m1*ell1 + m2*ell2) * g) / ellT
+
+# Mixing: [fl; fr] = mixing @ [F; tau]
+# F = fl + fr, tau = d(fl - fr)  => mixing = [[1/2, 1/(2d)], [1/2, -1/(2d)]]
+mixing = np.array([[0.5,  1.0/(2.0*d)],
+                   [0.5, -1.0/(2.0*d)]])
+
+# Unmixing: [F; tau] = unmixing @ [fl; fr]  => [[1,1],[d,-d]]
+unmixing = np.array([[1.0, 1.0],
+                     [d,   -d]])

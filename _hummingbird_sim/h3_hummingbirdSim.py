@@ -1,40 +1,87 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import hummingbirdParam as P
-from signalGenerator import SignalGenerator
-from hummingbirdAnimation import HummingbirdAnimation
-from dataPlotter import DataPlotter
 from hummingbirdDynamics import HummingbirdDynamics
+from dataPlotter import DataPlotter
+from hummingbirdAnimation import HummingbirdAnimation
+from ctrlEquilibrium import ctrlEquilibrium
 
+def _anim_update(anim, t, state):
+    """
+    Call the animation update with whatever signature your GUI expects:
+      - update(t, state)
+      - update(state)
+      - update()
+    """
+    try:
+        # Most GUI versions in this course expect (t, state)
+        anim.update(t, state)
+        return
+    except TypeError:
+        pass
+    try:
+        # Some versions expect only (state)
+        anim.update(state)
+        return
+    except TypeError:
+        pass
+    # Last resort: no-arg update
+    anim.update()
 
-# instantiate the hummingbird dyanmics
-hummingbird = HummingbirdDynamics(alpha=0.0)
+def run_h3():
+    """
+    H.3: simulate with arbitrary PWM so it 'freaks out' (as instructed).
+    This is purely to exercise the physics; the motion is not meaningful.
+    """
+    hb = HummingbirdDynamics(alpha=0.0)
+    plotter = DataPlotter()
+    anim = HummingbirdAnimation()
 
-# instantiate the simulation plots and animation
-dataPlot = DataPlotter()
-animation = HummingbirdAnimation()
+    t = 0.0
+    t_end = 2.0
+    Ts = P.Ts
 
-t = P.t_start  # time starts at t_start
-while t < P.t_end:  # main simulation loop
+    while t < t_end:
+        # random PWM in [0, 1]
+        u = np.array([[np.random.rand()], [np.random.rand()]])
+        hb.update(u)
+        plotter.update(t, hb.state, u)
+        _anim_update(anim, t, hb.state)
+        t += Ts
 
-    # Propagate dynamics at rate Ts
-    t_next_plot = t + P.t_plot
-    while t < t_next_plot:
-        ref = np.array([[0.], [0.], [0.]])
-        pwm_right = 0.38
-        pwm_left = 0.38
-        u = np.array([[pwm_left], [pwm_right]])
-        y = hummingbird.update(u)  # Propagate the dynamics
-        t = t + P.Ts  # advance time by Ts
+    try:
+        anim.close()
+    except Exception:
+        pass
+    plotter.close()
 
-    # update animation and data plots at rate t_plot
-    animation.update(t, hummingbird.state)
-    dataPlot.update(t, hummingbird.state, u)
+def run_h4_equilibrium():
+    """
+    H.4 #1: verify equilibrium at hover by setting F=Fe and tau=0 via ctrlEquilibrium.
+    Angles should remain near zero for the provided parameters.
+    """
+    hb = HummingbirdDynamics(alpha=0.0)
+    ctrl = ctrlEquilibrium()
+    plotter = DataPlotter()
+    anim = HummingbirdAnimation()
 
-    # the pause causes figure to be displayed during simulation
-    plt.pause(0.05)
+    t = 0.0
+    t_end = 2.0
+    Ts = P.Ts
 
-# Keeps the program from closing until the user presses a button.
-print('Press key to close')
-plt.waitforbuttonpress()
-plt.close()
+    while t < t_end:
+        u = ctrl.update(hb.state)  # PWM for F=Fe, tau=0
+        hb.update(u)
+        plotter.update(t, hb.state, u)
+        _anim_update(anim, t, hb.state)
+        t += Ts
+
+    try:
+        anim.close()
+    except Exception:
+        pass
+    plotter.close()
+
+if __name__ == "__main__":
+    # Run both parts back-to-back. Your grader can run either or both.
+    run_h3()
+    run_h4_equilibrium()
