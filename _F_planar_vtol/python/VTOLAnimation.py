@@ -1,3 +1,5 @@
+import matplotlib as mpl
+mpl.use("TkAgg") # do not steal focus when plotting (1st option)
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.widgets import Button
@@ -18,6 +20,13 @@ import matplotlib
 matplotlib.use('tkagg')  # requires TkInter
 # matplotlib.use('wxagg')  # requires wxPython
 
+<<<<<<< HEAD
+=======
+#mpl.rcParams['figure.raise_window'] = False # do not steal focus when plotting (2nd option)
+
+def exit_program(event):
+    exit()
+>>>>>>> upstream/2025fall
 
 class VTOLAnimation:
     def __init__(self):
