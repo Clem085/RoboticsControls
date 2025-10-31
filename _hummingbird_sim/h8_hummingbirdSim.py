@@ -5,38 +5,66 @@ from signalGenerator import SignalGenerator
 from hummingbirdAnimation import HummingbirdAnimation
 from dataPlotter import DataPlotter
 from hummingbirdDynamics import HummingbirdDynamics
-from ctrlPD import ctrlPD
+from ctrlPD import CtrlPD
 
-# instantiate pendulum, controller, and reference classes
-hummingbird = HummingbirdDynamics(alpha=0.1)
-controller = ctrlPD()
-psi_ref = SignalGenerator(amplitude=30.*np.pi/180., frequency=0.02)
-theta_ref = SignalGenerator(amplitude=15.*np.pi/180., frequency=0.05)
 
-# instantiate the simulation plots and animation
-dataPlot = DataPlotter()
-animation = HummingbirdAnimation()
+def saturate(u: np.ndarray, low: float, high: float):
+    out = np.copy(u)
+    for i in range(out.shape[0]):
+        out[i, 0] = max(min(out[i, 0], high), low)
+    return out
 
-t = P.t_start  # time starts at t_start
-y = hummingbird.h()
-while t < P.t_end:  # main simulation loop
 
-    # Propagate dynamics at rate Ts
-    t_next_plot = t + P.t_plot
-    while t < t_next_plot:
-        r = np.array([[theta_ref.square(t)], [psi_ref.square(t)]])
-        pwm, y_ref = controller.update(r, y)
-        y = hummingbird.update(pwm)  # Propagate the dynamics
-        t += P.Ts  # advance time by Ts
+def run_h8():
+    # instantiate plant, controller, and reference classes
+    hummingbird = HummingbirdDynamics(alpha=0.0)
+    controller = CtrlPD(P)
+    psi_ref = SignalGenerator(amplitude=30.0 * np.pi / 180.0, frequency=0.02)
+    theta_ref = SignalGenerator(amplitude=0.0, frequency=0.05)
 
-    # update animation and data plots at rate t_plot
-    animation.update(t, hummingbird.state)
-    dataPlot.update(t, hummingbird.state, pwm, y_ref)
+    # instantiate the simulation plots and animation
+    dataPlot = DataPlotter()
+    animation = HummingbirdAnimation()
 
-    # the pause causes figure to be displayed during simulation
-    plt.pause(0.0001)
+    t = 0.0
+    t_end = 12.0
+    Ts = P.Ts
 
-# Keeps the program from closing until the user presses a button.
-print('Press key to close')
-plt.waitforbuttonpress()
-plt.close()
+    while t < t_end:
+        # references and measurements
+        psi_d = psi_ref.square(t)
+        theta_d = theta_ref.square(t)
+        y = hummingbird.h()
+        phi = y[0, 0]
+        theta = y[1, 0]
+        psi = y[2, 0]
+
+        # controller update -> (F, tau)
+        state = (phi, theta, psi)
+        ref = {'theta_d': theta_d, 'psi_d': psi_d}
+        F_cmd, tau_cmd = controller.update(state, ref, Ts)
+
+        # Convert [F; tau] -> [fl; fr] -> PWM
+        ft = np.array([[F_cmd], [tau_cmd]])
+        fl_fr = P.mixing @ ft
+        pwm = fl_fr / P.km
+        pwm = saturate(pwm, 0.0, 1.0)
+
+        # Propagate dynamics
+        hummingbird.update(pwm)
+
+        # update animation and data plots
+        refs = np.array([[controller.last_phi_d], [theta_d], [psi_d]])
+        animation.update(t, hummingbird.state)
+        dataPlot.update(t, hummingbird.state, pwm, refs)
+
+        t += Ts
+        plt.pause(0.0001)
+
+    print('Press key to close')
+    plt.waitforbuttonpress()
+    plt.close()
+
+
+if __name__ == "__main__":
+    run_h8()

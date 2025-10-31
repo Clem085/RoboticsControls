@@ -1,0 +1,13 @@
+[
+  {
+    "key": "ctrl+alt+p",
+    "command": "_crossnote.chromeExport",
+    "when": "editorLangId == markdown"
+  },
+  {
+    "key": "ctrl+alt+e",
+    "command": "workbench.action.tasks.runTask",
+    "args": "Export Markdown to PDF (Puppeteer)",
+    "when": "editorTextFocus && resourceExtname == .md"
+  }
+]

@@ -1,0 +1,13 @@
+{
+  // Ensure KaTeX is used for math rendering in preview/export
+  "markdown-preview-enhanced.mathRenderingOption": "KaTeX",
+
+  // Avoid pandoc/LaTeX engines; use markdown-it and KaTeX
+  "markdown-preview-enhanced.usePandocParser": false,
+
+  // Puppeteer (Chromium) export settings for consistent colors
+  "markdown-preview-enhanced.printBackground": true,
+  "markdown-preview-enhanced.puppeteerWaitForTimeout": 500,
+  "markdown-preview-enhanced.puppeteerArgs": []
+}
+

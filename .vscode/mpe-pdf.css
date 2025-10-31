@@ -1,0 +1,52 @@
+/* === Markdown Preview Enhanced PDF Export Style === */
+
+@page {
+  size: A4;
+  margin: 25mm 20mm 25mm 20mm;
+}
+
+body {
+  font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.5;
+  color: #111;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Headings */
+h1, h2, h3, h4 {
+  font-weight: 600;
+  color: #202124;
+  margin-top: 1.2em;
+  margin-bottom: 0.4em;
+}
+
+h1 {
+  border-bottom: 2px solid #aaa;
+  padding-bottom: 4px;
+}
+
+h2 {
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 2px;
+}
+
+/* Code and math */
+pre, code {
+  font-family: "Fira Code", "Consolas", monospace;
+  background-color: #f6f8fa;
+  border-radius: 4px;
+}
+pre {
+  padding: 8px 10px;
+  overflow-x: auto;
+}
+.katex-display {
+  margin: 1em auto;
+  text-align: center;
+  font-size: 1.05em;
+}
+.katex {
+  font-size: 1.0em;
+}
