@@ -1,0 +1,151 @@
+<hr>
+<p>title: Hummingbird Lab 3 - PD Control (Simulation)
+date: 2025-10-31
+header-includes:</p>
+<ul>
+<li amsmath="">\usepackage</li>
+<li amssymb="">\usepackage</li>
+<li siunitx="">\usepackage</li>
+<li graphicx="">\usepackage</li>
+<li>\graphicspath{{…/figs/}{figs/}{_hummingbird_sim/figs/}}
+resource-path:</li>
+<li>.</li>
+<li>_hummingbird_sim</li>
+<li>figs</li>
+<li>…/figs</li>
+</ul>
+<hr>
+<h2>Overview</h2>
+<ul>
+<li>This note summarizes the PD designs used in Lab 3 for the hummingbird simulation and records the specific formulas used to compute gains from time-domain specs. All math is LaTeX to render correctly when exported to PDF (tested with pandoc and typical VS Code PDF exporters that support MathJax/KaTeX).</li>
+</ul>
+<h2>Models</h2>
+<ul>
+<li>
+<p>Longitudinal (about <span class="katex"><span class="katex-mathml"><math><semantics><mrow><msub><mi>θ</mi><mi>e</mi></msub><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\theta_e=0</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.69444em;"></span><span class="strut bottom" style="height:0.84444em;vertical-align:-0.15em;"></span><span class="base textstyle uncramped"><span class="mord"><span class="mord mathit" style="margin-right:0.02778em;">θ</span><span class="vlist"><span style="top:0.15em;margin-right:0.05em;margin-left:-0.02778em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle cramped"><span class="mord mathit">e</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span><span class="mrel">=</span><span class="mord mathrm">0</span></span></span></span>):</p>
+<p aligned="">\begin{aligned}
+\tilde\theta’'(t) &amp;= b_\theta,\tilde F(t),\
+b_\theta &amp;= \dfrac{\ell_T}{m_1\ell_1^2 + m_2\ell_2^2 + J_{1y} + J_{2y}},\
+F_e &amp;= \dfrac{(m_1\ell_1 + m_2\ell_2),g}{\ell_T}.
+\end</p>
+</li>
+<li>
+<p>Lateral (successive loop closure, inner roll faster than outer yaw):</p>
+<p aligned="">\begin{aligned}
+\phi’‘(t) &amp;= \frac{1}{J_{1x}},\tau(t),\
+\psi’'(t) &amp;\approx b_\psi,\phi(t),\quad b_\psi \approx \frac{\ell_T F_e}{J_{zz,\text{eq}}},\
+J_{zz,\text{eq}} &amp;= m_1\ell_1^2 + m_2\ell_2^2 + J_{2z} + J_{1z} + m_3(\ell_{3x}^2 + \ell_{3y}^2) + J_{3z}.
+\end</p>
+</li>
+</ul>
+<h2>Dirty Derivative (First-Order Filtered Difference)</h2>
+<p>For any signal <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>x</mi></mrow><annotation encoding="application/x-tex">x</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.43056em;"></span><span class="strut bottom" style="height:0.43056em;vertical-align:0em;"></span><span class="base textstyle uncramped"><span class="mord mathit">x</span></span></span></span>:</p>
+<p aligned="">\begin{aligned}
+\hat{\dot x}[k] &amp;= \alpha,\hat{\dot x}[k-1] + (1-\alpha),\frac{x[k]-x[k-1]}{T_s},\
+\alpha &amp;= \frac{\tau_d}{\tau_d + T_s}.
+\end</p>
+<h2>Gain Mapping from Specs</h2>
+<p>With desired <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>ζ</mi></mrow><annotation encoding="application/x-tex">\zeta</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.69444em;"></span><span class="strut bottom" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="base textstyle uncramped"><span class="mord mathit" style="margin-right:0.07378em;">ζ</span></span></span></span> and rise time <span class="katex"><span class="katex-mathml"><math><semantics><mrow><msub><mi>t</mi><mi>r</mi></msub></mrow><annotation encoding="application/x-tex">t_r</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.61508em;"></span><span class="strut bottom" style="height:0.76508em;vertical-align:-0.15em;"></span><span class="base textstyle uncramped"><span class="mord"><span class="mord mathit">t</span><span class="vlist"><span style="top:0.15em;margin-right:0.05em;margin-left:0em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle cramped"><span class="mord mathit" style="margin-right:0.02778em;">r</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span></span>:</p>
+<p>\omega_n \approx \frac{2.2}{t_r}.</p>
+<ul>
+<li>
+<p>Longitudinal (pitch):</p>
+<p>k_{P_\theta} = \frac{\omega_{n\theta}^2}{b_\theta},\quad
+k_{D_\theta} = \frac{2\zeta_\theta,\omega_{n\theta}}{b_\theta}.</p>
+</li>
+<li>
+<p>Inner roll:</p>
+<p>k_{P_\phi} = \omega_{n\phi}^2 J_{1x},\quad
+k_{D_\phi} = 2\zeta_\phi,\omega_{n\phi} J_{1x}.</p>
+</li>
+<li>
+<p>Outer yaw:</p>
+<p>k_{P_\psi} = \frac{\omega_{n\psi}^2}{b_\psi},\quad
+k_{D_\psi} = \frac{2\zeta_\psi,\omega_{n\psi}}{b_\psi}.</p>
+</li>
+</ul>
+<h2>Bandwidth Separation</h2>
+<p>Choose inner-loop roll at least one order faster than yaw:</p>
+<p>\omega_{n\phi} = M,\omega_{n\psi},\quad M \in [10,20].</p>
+<h2>Control Laws (PD Only)</h2>
+<ul>
+<li>
+<p>Longitudinal PD (force):</p>
+<p aligned="">\begin{aligned}
+e_\theta &amp;= \theta_d - \theta,\
+\widehat{\dot e}<em>\theta &amp;= -,\widehat{\dot\theta},\
+\tilde F &amp;= k</em>{P_\theta} e_\theta + k_{D_\theta},\widehat{\dot e}_\theta,\
+F &amp;= F_e + \tilde F.
+\end</p>
+</li>
+<li>
+<p>Lateral PD (successive loops):</p>
+<p>Outer yaw (commands roll reference):</p>
+<p>e_\psi = \psi_d - \psi,\quad \widehat{\dot e}<em>\psi = -,\widehat{\dot\psi},\quad
+\phi_d = k</em>{P_\psi} e_\psi + k_{D_\psi},\widehat{\dot e}_\psi.</p>
+<p>Inner roll (commands torque):</p>
+<p>e_\phi = \phi_d - \phi,\quad \widehat{\dot e}<em>\phi = -,\widehat{\dot\phi},\quad
+\tau = k</em>{P_\phi} e_\phi + k_{D_\phi},\widehat{\dot e}_\phi.</p>
+</li>
+</ul>
+<h2>Simulation Notes</h2>
+<ul>
+<li>H.7: Step <span class="katex"><span class="katex-mathml"><math><semantics><mrow><msub><mi>θ</mi><mi>d</mi></msub></mrow><annotation encoding="application/x-tex">\theta_d</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.69444em;"></span><span class="strut bottom" style="height:0.84444em;vertical-align:-0.15em;"></span><span class="base textstyle uncramped"><span class="mord"><span class="mord mathit" style="margin-right:0.02778em;">θ</span><span class="vlist"><span style="top:0.15em;margin-right:0.05em;margin-left:-0.02778em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle cramped"><span class="mord mathit">d</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span></span> by <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mo>±</mo><msup><mn>5</mn><mo>∘</mo></msup></mrow><annotation encoding="application/x-tex">\pm5^\circ</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.674115em;"></span><span class="strut bottom" style="height:0.757445em;vertical-align:-0.08333em;"></span><span class="base textstyle uncramped"><span class="mord">±</span><span class="mord"><span class="mord mathrm">5</span><span class="vlist"><span style="top:-0.363em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle uncramped"><span class="mord">∘</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span></span> and verify well-damped tracking. The logged force <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>F</mi></mrow><annotation encoding="application/x-tex">F</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.68333em;"></span><span class="strut bottom" style="height:0.68333em;vertical-align:0em;"></span><span class="base textstyle uncramped"><span class="mord mathit" style="margin-right:0.13889em;">F</span></span></span></span> should equal <span class="katex"><span class="katex-mathml"><math><semantics><mrow><msub><mi>F</mi><mi>e</mi></msub></mrow><annotation encoding="application/x-tex">F_e</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.68333em;"></span><span class="strut bottom" style="height:0.83333em;vertical-align:-0.15em;"></span><span class="base textstyle uncramped"><span class="mord"><span class="mord mathit" style="margin-right:0.13889em;">F</span><span class="vlist"><span style="top:0.15em;margin-right:0.05em;margin-left:-0.13889em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle cramped"><span class="mord mathit">e</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span></span> plus PD action.</li>
+<li>H.8: Step <span class="katex"><span class="katex-mathml"><math><semantics><mrow><msub><mi>ψ</mi><mi>d</mi></msub></mrow><annotation encoding="application/x-tex">\psi_d</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.69444em;"></span><span class="strut bottom" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="base textstyle uncramped"><span class="mord"><span class="mord mathit" style="margin-right:0.03588em;">ψ</span><span class="vlist"><span style="top:0.15em;margin-right:0.05em;margin-left:-0.03588em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle cramped"><span class="mord mathit">d</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span></span> (e.g., <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mn>3</mn><msup><mn>0</mn><mo>∘</mo></msup></mrow><annotation encoding="application/x-tex">30^\circ</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.674115em;"></span><span class="strut bottom" style="height:0.674115em;vertical-align:0em;"></span><span class="base textstyle uncramped"><span class="mord mathrm">3</span><span class="mord"><span class="mord mathrm">0</span><span class="vlist"><span style="top:-0.363em;margin-right:0.05em;"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span><span class="reset-textstyle scriptstyle uncramped"><span class="mord">∘</span></span></span><span class="baseline-fix"><span class="fontsize-ensurer reset-size5 size5"><span style="font-size:0em;">​</span></span>​</span></span></span></span></span></span>). The roll response should be visibly faster; the rise-time ratio should be near <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>M</mi></mrow><annotation encoding="application/x-tex">M</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="strut" style="height:0.68333em;"></span><span class="strut bottom" style="height:0.68333em;vertical-align:0em;"></span><span class="base textstyle uncramped"><span class="mord mathit" style="margin-right:0.10903em;">M</span></span></span></span>.</li>
+</ul>
+<h2>How to Run</h2>
+<p>From the repository root (recommended to ensure imports resolve):</p>
+<pre><code class="language-bash">python -m _hummingbird_sim.h7_hummingbirdSim
+python -m _hummingbird_sim.h8_hummingbirdSim
+</code></pre>
+<p>Or from the directory itself (matches current import style):</p>
+<pre><code class="language-bash">cd _hummingbird_sim
+python h7_hummingbirdSim.py
+python h8_hummingbirdSim.py
+</code></pre>
+<p>Python version used during development: <code>3.13</code>. If matplotlib/pyqt are missing, install from the repo root:</p>
+<pre><code class="language-bash">python -m pip install --user -r requirements.txt
+</code></pre>
+<h2>Results and Figures (placeholders)</h2>
+<p>GUI Simulation Output from H.7 &amp; H.8
+Images are expected in <code>../figs/</code> relative to this Markdown file (as you currently have in the repo). The YAML header sets a LaTeX <code>\graphicspath</code> and a Pandoc <code>resource-path</code> so PDF export can find them even if you run Pandoc from the repo root.</p>
+<h3>H.7 - Longitudinal PD (Pitch)</h3>
+<p><img src="../figs/image-3.png" alt="H.7 pitch tracking (theta vs theta_d)" width="70%">
+<img src="../figs/image-2.png" alt="H.7 force command F" width="70%"></p>
+<h3>H.8 - Lateral PD (Yaw/Roll)</h3>
+<p><img src="../figs/image-1.png" alt="H.8 yaw tracking (psi vs psi_d)" width="70%">
+<img src="../figs/image.png" alt="H.8 roll inner-loop (phi vs phi_d)" width="70%"></p>
+<p>Tip: In matplotlib windows you can use the save icon, or temporarily add <code>plt.savefig('figs/h7_theta.png', dpi=200, bbox_inches='tight')</code> near the end of the script.</p>
+<h2>PDF Export</h2>
+<p>Pandoc (recommended). Run from the file’s folder so relative image paths like <code>../figs/...</code> resolve the same as VS Code preview:</p>
+<pre><code class="language-bash">cd _hummingbird_sim
+pandoc Lab3_Review.md \
+  --standalone \
+  --from gfm+tex_math_dollars+attributes+link_attributes \
+  --to pdf \
+  --pdf-engine=lualatex \
+  -o Lab3_Review.pdf
+</code></pre>
+<p>Alternative (run from repo root) — include an explicit resource path so Pandoc finds figures stored outside this folder:</p>
+<pre><code class="language-bash">pandoc _hummingbird_sim/Lab3_Review.md \
+  --standalone \
+  --from gfm+tex_math_dollars+attributes+link_attributes \
+  --to pdf \
+  --pdf-engine=lualatex \
+  --resource-path=&quot;.;_hummingbird_sim;figs;_hummingbird_sim/figs&quot; \
+  -o _hummingbird_sim/Lab3_Review.pdf
+</code></pre>
+<p>VS Code: pick a PDF exporter with MathJax/KaTeX enabled. If formulas render as plain text or images are missing, switch to Pandoc or use the <code>cd _hummingbird_sim</code> approach above.</p>
+<h2>Repo Map (for this lab)</h2>
+<ul>
+<li>Controllers: <code>ctrlLonPD.py</code>, <code>ctrlPD.py</code></li>
+<li>Sims/plots: <code>h7_hummingbirdSim.py</code>, <code>h8_hummingbirdSim.py</code>, <code>dataPlotter.py</code></li>
+<li>Dynamics/params: <code>hummingbirdDynamics.py</code>, <code>hummingbirdParam.py</code>, <code>signalGenerator.py</code></li>
+<li>This report: <code>Lab3_Review.md</code>, lessons: <code>Lab3_Learned.txt</code></li>
+</ul>
+<h2>Troubleshooting</h2>
+<ul>
+<li>If you see OpenGL/pyqtgraph warnings during animation, they are typically harmless on headless or constrained GPUs.</li>
+<li>If <code>_hummingbird_sim</code> imports fail when using <code>-m</code>, run from inside the folder with <code>python h7_hummingbirdSim.py</code>.</li>
+<li>If plots don’t show in PDF, confirm you used Pandoc with <code>lualatex</code> and that image paths exist.</li>
+</ul>

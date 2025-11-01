@@ -8,6 +8,7 @@
   // Puppeteer (Chromium) export settings for consistent colors
   "markdown-preview-enhanced.printBackground": true,
   "markdown-preview-enhanced.puppeteerWaitForTimeout": 500,
-  "markdown-preview-enhanced.puppeteerArgs": []
+  "markdown-preview-enhanced.puppeteerArgs": [],
+  "chatgpt.openOnStartup": true
 }
 

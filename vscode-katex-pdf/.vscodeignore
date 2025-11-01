@@ -1,0 +1,12 @@
+**/.git/**
+**/.github/**
+**/.vscode/**
+**/node_modules/**/typescript/**
+**/node_modules/**/@types/**
+**/test/**
+**/tests/**
+**/*.log
+**/*.tmp
+**/*.map
+**/.DS_Store
+

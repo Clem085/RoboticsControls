@@ -1,0 +1,57 @@
+{
+  "name": "hummingbird-katex-pdf",
+  "displayName": "Hummingbird KaTeX PDF Export",
+  "description": "Export Markdown to PDF using markdown-it with KaTeX and image paths resolved relative to the Markdown file.",
+  "version": "0.1.2",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:hummingbird-katex-pdf.exportPdf"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "hummingbird-katex-pdf.exportPdf",
+        "title": "Export Markdown to PDF (KaTeX)"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Hummingbird KaTeX PDF Export",
+      "properties": {
+        "hummingbirdKatexPdf.pageMargins": {
+          "type": "string",
+          "default": "1in",
+          "description": "Page margins for PDF (applies to top/right/bottom/left). Accepts CSS lengths (e.g., 1in, 20mm)."
+        },
+        "hummingbirdKatexPdf.paperFormat": {
+          "type": "string",
+          "default": "A4",
+          "enum": ["A4", "Letter", "Legal", "A3", "A5", "Tabloid"],
+          "description": "Paper format for PDF output."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "postinstall": "echo Ready",
+    "package": "npx @vscode/vsce package"
+  },
+  "dependencies": {
+    "katex": "^0.16.11",
+    "markdown-it": "^13.0.2",
+    "markdown-it-attrs": "^4.1.6",
+    "markdown-it-katex": "^2.0.3",
+    "markdown-it-texmath": "^1.0.0",
+    "puppeteer": "^21.7.0"
+  },
+  "devDependencies": {
+    "vscode": "^1.1.37"
+  }
+}
