@@ -8,58 +8,47 @@ import massParam as P
 
 class ctrlPD:
     def __init__(self):
+        # Match solution tuning (zeta ~= 0.707)
         tr = 2.0
-        zeta = 0.7
+        zeta = 0.707
         wn = 2.2 / tr
-        
+
         alpha1 = 2.0 * zeta * wn
         alpha0 = wn**2
-        
+
         self.pole_real = -zeta * wn
         self.pole_imag = wn * np.sqrt(1 - zeta**2)
-        
+
         a1 = P.b / P.m
         a0 = P.k / P.m
         b0 = 1.0 / P.m
-        
+
+        # Gains (kp, kd) equivalent to solution
         self.kP = (alpha0 - a0) / b0
         self.kD = (alpha1 - a1) / b0
-        
+
         print('\n' + '='*60)
         print('HOMEWORK D.8(a): PD Controller Design')
         print('='*60)
-        print('Design Requirements:')
-        print('  Rise time (tr):    {} seconds'.format(tr))
-        print('  Damping ratio (zeta): {}'.format(zeta))
-        print('\nDesired Performance:')
-        print('  Natural frequency (wn): {:.4f} rad/s'.format(wn))
+        print('  tr = {:.3f} s, zeta = {:.3f}'.format(tr, zeta))
+        print('  wn = {:.4f} rad/s'.format(wn))
         print('  Desired poles: {:.4f} +/- j{:.4f}'.format(self.pole_real, self.pole_imag))
-        print('\nDesired Closed-Loop Characteristic Polynomial:')
-        print('  Delta_cl^d(s) = s^2 + {:.4f}s + {:.4f}'.format(alpha1, alpha0))
-        print('\nSystem Parameters:')
-        print('  m = {} kg (mass)'.format(P.m))
-        print('  k = {} N/m (spring constant)'.format(P.k))
-        print('  b = {} N*s/m (damping coefficient)'.format(P.b))
-        print('\nOpen-Loop Coefficients:')
-        print('  a1 (damping):  {:.4f}'.format(a1))
-        print('  a0 (spring):   {:.4f}'.format(a0))
-        print('  b0 (input):    {:.4f}'.format(b0))
-        print('\nComputed PD Gains:')
-        print('  kP = {:.4f}'.format(self.kP))
-        print('  kD = {:.4f}'.format(self.kD))
+        print('  kP = {:.4f}, kD = {:.4f}'.format(self.kP, self.kD))
         print('='*60 + '\n')
 
     def update(self, z_r, state):
         z = state[0][0]
         zdot = state[1][0]
         F = self.kP * (z_r - z) - self.kD * zdot
-        return F
+        # Saturate to match solution behavior
+        return saturate(F, P.F_max)
 
 
 class ctrlPD_saturated:
     def __init__(self):
+        # Keep a slower, non-saturating design for part (b)
         tr = 3.5
-        zeta = 0.7
+        zeta = 0.707
         wn = 2.2 / tr
         
         alpha1 = 2.0 * zeta * wn
@@ -104,4 +93,10 @@ class ctrlPD_saturated:
         z = state[0][0]
         zdot = state[1][0]
         F = self.kP * (z_r - z) - self.kD * zdot
-        return F
+        return saturate(F, P.F_max)
+
+
+def saturate(u, limit):
+    if abs(u) > limit:
+        u = limit * np.sign(u)
+    return u
