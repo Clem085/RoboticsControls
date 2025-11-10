@@ -32,6 +32,11 @@ km = 0.8
 # Integration step
 Ts = 0.002
 
+# Simulation timing
+t_start = 0.0     # start time (s)
+t_end = 20.0      # end time (s)
+t_plot = 0.1      # plotting interval (s)
+
 # Initial conditions
 phi0 = 0.0
 theta0 = 0.0

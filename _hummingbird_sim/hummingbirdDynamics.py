@@ -18,8 +18,11 @@ class HummingbirdDynamics:
             [P.thetadot0],
             [P.psidot0],
         ])
-        # optional motor variability
-        # self.km = P.km * (1. + alpha * (2. * np.random.rand() - 1.))
+        # motor gain (optionally varied by alpha for simulation uncertainty)
+        if alpha and alpha != 0.0:
+            self.km = P.km * (1.0 + alpha * (2.0 * np.random.rand() - 1.0))
+        else:
+            self.km = P.km
 
     def h(self):
         # measured outputs (angles)
