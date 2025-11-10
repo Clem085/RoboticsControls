@@ -1,0 +1,1 @@
+Used equilibrium controller displayed in humming bird manual to determine left/right motor forces, then convert it into PWM signals using mixing matrix. 

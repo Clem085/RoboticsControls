@@ -1,6 +1,7 @@
 import numpy as np
 import hummingbirdParam as P
 
+# Set I for PID to 0
 
 class ctrlLonPID:
     def __init__(self):

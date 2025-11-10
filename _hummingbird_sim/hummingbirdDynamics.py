@@ -1,148 +1,153 @@
-# hummingbirdDynamics.py
 import numpy as np
 import hummingbirdParam as P
 
-def _saturate(u, lo, hi):
-    if isinstance(u, float) or np.isscalar(u):
-        return max(min(u, hi), lo)
-    u = np.array(u, dtype=float).copy()
-    for i in range(u.shape[0]):
-        u[i][0] = max(min(u[i][0], hi), lo)
-    return u
+def saturate(u: np.ndarray, low: float, high: float):
+    out = np.copy(u)
+    for i in range(out.shape[0]):
+        out[i,0] = max(min(out[i,0], high), low)
+    return out
 
 class HummingbirdDynamics:
-    """
-    State x = [phi, theta, psi, phidot, thetadot, psidot]^T  (6x1 column)
-    Input u = [[pwm_left],[pwm_right]] in [0,1]
-    """
-    def __init__(self, alpha: float = 0.0, integrator: str = "rk4"):
-        self.alpha = float(alpha)
-        self.integrator = integrator
-        # initialize state from parameter file
-        self.state = np.array([[P.phi0],
-                               [P.theta0],
-                               [P.psi0],
-                               [P.phidot0],
-                               [P.thetadot0],
-                               [P.psidot0]], dtype=float)
-        # small viscous damping on generalized rates
-        self._B = 1.0e-3 * np.eye(3)
-        self._Ts = float(P.Ts)
-
-    # public API expected by your sim
-    def update(self, u_pwm: np.ndarray):
-        u_pwm = _saturate(u_pwm, 0.0, 1.0)  # clamp PWM to [0,1]
-        if self.integrator == "rk4":
-            self.state = self._rk4_step(self.state, u_pwm, self._Ts)
+    def __init__(self, alpha=0.0):
+        # state: [phi, theta, psi, phidot, thetadot, psidot]
+        self.state = np.array([
+            [P.phi0],
+            [P.theta0],
+            [P.psi0],
+            [P.phidot0],
+            [P.thetadot0],
+            [P.psidot0],
+        ])
+        # motor gain (optionally varied by alpha for simulation uncertainty)
+        if alpha and alpha != 0.0:
+            self.km = P.km * (1.0 + alpha * (2.0 * np.random.rand() - 1.0))
         else:
-            self.state = self._euler_step(self.state, u_pwm, self._Ts)
-        # return measured outputs (angles)
-        y = self.state[0:3].copy()
-        return y
+            self.km = P.km
 
-    # ---------- integrators ----------
-    def _euler_step(self, x, u, Ts):
-        return x + Ts * self._f(x, u)
+    def h(self):
+        # measured outputs (angles)
+        phi, theta, psi = self.state[0,0], self.state[1,0], self.state[2,0]
+        return np.array([[phi],[theta],[psi]])
 
-    def _rk4_step(self, x, u, Ts):
-        k1 = self._f(x, u)
-        k2 = self._f(x + 0.5*Ts*k1, u)
-        k3 = self._f(x + 0.5*Ts*k2, u)
-        k4 = self._f(x + Ts*k3, u)
-        return x + (Ts/6.0)*(k1 + 2*k2 + 2*k3 + k4)
+    # --- Mass matrix M(q): Chapter 2, Eqs. (2.30)–(2.33) ---
+    def _M(self, state):
+        phi = state[0,0]
+        theta = state[1,0]
+        sphi, cphi = np.sin(phi), np.cos(phi)
+        sthe, cthe = np.sin(theta), np.cos(theta)
 
-    # ---------- continuous dynamics ----------
-    def _f(self, x, u_pwm):
-        # unpack state
-        phi, theta, psi, phid, thetad, psid = [x[i,0] for i in range(6)]
-        q    = np.array([phi, theta, psi])
-        qdot = np.array([phid, thetad, psid])
+        J1x, J1y, J1z = P.J1x, P.J1y, P.J1z
+        J2x, J2y, J2z = P.J2x, P.J2y, P.J2z
 
-        # PWM -> total force F and roll torque tau_phi
-        uL = float(u_pwm[0,0]); uR = float(u_pwm[1,0])
-        # From your controller scaffold: force = km*(uL+uR), torque = km*d*(uL-uR)
-        F_total = P.km * (uL + uR)
-        tau_phi = P.km * P.d * (uL - uR)
+        M11 = J1x
+        M12 = 0.0
+        M13 = -J1x * sthe
 
-        # generalized input τ(q,u)
-        tau = self._tau_gen(q, F_total, tau_phi)
+        M22 = P.m1*P.ell1**2 + P.m2*P.ell2**2 + J2y + (J1y*(cphi**2) + J1z*(sphi**2))
+        M23 = (J1y - J1z) * sphi * cphi * cthe
 
-        # dynamics pieces
-        M = self._M(q)
-        C = self._C(q, qdot)
-        dP_dq = self._dP_dq(q)
+        T1 = (P.m1*P.ell1**2 + P.m2*P.ell2**2 + J2z + J1y*(sphi**2) + J1z*(cphi**2)) * (cthe**2)
+        T2 = (J1x + J2x) * (sthe**2)
+        M33 = T1 + T2 + P.m3*(P.ell3x**2 + P.ell3y**2) + P.J3z
 
-        # qddot
-        qddot = np.linalg.solve(M, tau - self._B @ qdot - C - dP_dq)
-
-        xdot = np.array([[phid],
-                         [thetad],
-                         [psid],
-                         [qddot[0]],
-                         [qddot[1]],
-                         [qddot[2]]], dtype=float)
-        return xdot
-
-    # ---------- model pieces (Chapter 3) ----------
-    def _M(self, q):
-        phi, theta, _ = q
-        c = np.cos; s = np.sin
-        cphi, sphi = c(phi), s(phi)
-        cth,  sth  = c(theta), s(theta)
-
-        M22 = (P.m1*P.ell1**2 + P.m2*P.ell2**2 + P.J2y
-               + P.J1y*cphi**2 + P.J1z*sphi**2)
-        M23 = (P.J1y - P.J1z)*sphi*cphi*cth
-        M33 = ((P.m1*P.ell1**2 + P.m2*P.ell2**2 + P.J2z
-                + P.J1y*sphi**2 + P.J1z*cphi**2)*(cth**2)
-               + (P.J1x + P.J2x)*(sth**2)
-               + P.m3*(P.ell3x**2 + P.ell3y**2) + P.J3z)
-
-        M = np.array([[P.J1x,          0.0,        -P.J1x*sth],
-                      [0.0,            M22,         M23       ],
-                      [-P.J1x*sth,     M23,         M33       ]], dtype=float)
+        M = np.array([[M11, M12, M13],
+                      [M12, M22, M23],
+                      [M13, M23, M33]])
         return M
 
-    def _C(self, q, qdot):
-        phi, theta, _      = q
-        phid, thetad, psid = qdot
-        c = np.cos; s = np.sin
-        cphi, sphi = c(phi), s(phi)
-        cth,  sth  = c(theta), s(theta)
-        c2phi, s2phi = cphi**2, sphi**2
+    # --- Coriolis/Centrifugal matrix C(q, qdot) so that C(q,qdot)@qdot = c(q,qdot) ---
+    def _C(self, state):
+        phi = state[0,0]
+        theta = state[1,0]
+        sphi, cphi = np.sin(phi), np.cos(phi)
+        sthe, cthe = np.sin(theta), np.cos(theta)
 
-        A = (P.J1y - P.J1z)
+        J1x, J1y, J1z = P.J1x, P.J1y, P.J1z
+        J2x, J2y, J2z = P.J2x, P.J2y, P.J2z
 
-        # Row-grouped compact form matching the manual’s structure
-        term1 = A*sphi*cphi*(thetad**2 - (cth**2)*(psid**2)) \
-                + (A*(c2phi - s2phi) - P.J1x)*cth*thetad*psid
+        # ∂M/∂phi
+        dM_dphi = np.zeros((3,3))
+        dM_dphi[1,1] = 2.0*(J1z - J1y)*sphi*cphi
+        dM_dphi[1,2] = (J1y - J1z)*(cphi**2 - sphi**2)*cthe
+        dM_dphi[2,1] = dM_dphi[1,2]
+        dM_dphi[2,2] = 2.0*(J1y - J1z)*sphi*cphi*(cthe**2)
 
-        term2 = -2*(P.J1z - P.J1y)*sphi*cphi*phid*thetad \
-                + (A*(c2phi - s2phi) + P.J1x)*cth*phid*psid \
-                - ( -P.m1*P.ell1**2 - P.m2*P.ell2**2 - P.J2z + P.J1x + P.J2x
-                    - P.J1y*s2phi - P.J1z*c2phi )*2*sth*cth*(psid**2)/1.0
+        # ∂M/∂theta
+        dM_dthe = np.zeros((3,3))
+        dM_dthe[0,2] = -J1x * cthe
+        dM_dthe[2,0] = dM_dthe[0,2]
+        dM_dthe[1,2] = -(J1y - J1z)*sphi*cphi*sthe
+        dM_dthe[2,1] = dM_dthe[1,2]
+        A = (P.m1*P.ell1**2 + P.m2*P.ell2**2 + J2z + J1y*(sphi**2) + J1z*(cphi**2))
+        dM_dthe[2,2] = -2.0*A*cthe*sthe + 2.0*(J1x + J2x)*sthe*cthe
 
-        term3 = (P.J1z - P.J1y)*sphi*cphi*sth*(thetad**2) \
-                + (A*(c2phi - s2phi) - P.J1x)*cth*phid*thetad \
-                + 2*A*sphi*cphi*phid*psid \
-                + 2*( -P.m1*P.ell1**2 - P.m2*P.ell2**2 - P.J2z + P.J1x + P.J2x
-                      + P.J1y*s2phi + P.J1z*s2phi )*sth*cth*thetad*psid
+        # ∂M/∂psi = 0
+        dM_dpsi = np.zeros((3,3))
 
-        return np.array([term1, term2, term3], dtype=float)
+        # Coriolis matrix via Christoffel symbols:
+        # C_ij = 1/2 * sum_k [ (∂M_ij/∂q_k) + (∂M_ik/∂q_j) - (∂M_jk/∂q_i) ] * qdot_k
+        qdot = state[3:6,:].reshape(3)
+        dM = [dM_dphi, dM_dthe, dM_dpsi]
+        C = np.zeros((3,3))
+        for i in range(3):
+            for j in range(3):
+                s = 0.0
+                for k in range(3):
+                    s += 0.5 * (dM[k][i,j] + dM[j][i,k] - dM[i][j,k]) * qdot[k]
+                C[i,j] = s
+        return C
 
-    def _dP_dq(self, q):
-        _, theta, _ = q
-        return np.array([
-            0.0,
-            (P.m1*P.ell1 + P.m2*P.ell2) * P.g * np.sin(theta),
-            0.0
-        ], dtype=float)
+    def _B(self):
+        # viscous damping
+        return np.diag([P.b_phi, P.b_theta, P.b_psi])
 
+    def _partialP(self, state: np.ndarray):
+        # @P/@q from (3.10): [0, (m1*ell1 + m2*ell2) g cos(theta), 0]^T
+        theta = state[1,0]
+        return np.array([[0.0],
+                         [(P.m1*P.ell1 + P.m2*P.ell2) * P.g * np.cos(theta)],
+                         [0.0]])
 
-    def _tau_gen(self, q, F_total, tau_phi):
-        phi, theta, _ = q
-        c = np.cos; s = np.sin
-        # roll input from differential thrust; other entries from geometry
-        tau_theta = P.ellT * F_total * c(phi)
-        tau_psi   = P.ellT * F_total * c(theta)*s(phi) - tau_phi * s(theta)
-        return np.array([tau_phi, tau_theta, tau_psi], dtype=float)
+    def _tau(self, state: np.ndarray, force: float, torque: float):
+        # Generalized forces vector:
+        # tau1 = tau
+        # tau2 = ellT*F*cos(theta)
+        # tau3 = ellT*F*cos(phi)*sin(theta) - tau*sin(phi)
+        phi = state[0,0]
+        theta = state[1,0]
+        tau1 = torque
+        tau2 = P.ellT * force * np.cos(theta)
+        tau3 = P.ellT * force * np.cos(phi) * np.sin(theta) - torque * np.sin(phi)
+        return np.array([[tau1],[tau2],[tau3]])
+
+    def f(self, state, u_pwm):
+        # PWM (0..1) -> rotor forces
+        fl = self.km * u_pwm[0,0]
+        fr = self.km * u_pwm[1,0]
+        # [F; tau] = unmixing @ [fl; fr]
+        Ft_tau = P.unmixing @ np.array([[fl],[fr]])
+        F = Ft_tau[0,0]
+        tau = Ft_tau[1,0]
+
+        q = state[0:3,:]
+        qdot = state[3:6,:]
+        M = self._M(state)
+        C = self._C(state)
+        B = self._B()
+        dPdq = self._partialP(state)
+        Tau = self._tau(state, F, tau)
+
+        # Euler-Lagrange: M qdd + C qdot + dP/dq + B qdot = Tau
+        qdd = np.linalg.solve(M, Tau - (C + B) @ qdot - dPdq)
+        xdot = np.vstack((qdot, qdd))
+        return xdot
+
+    def update(self, u_pwm):
+        # 4th-order Runge-Kutta
+        x = self.state
+        F1 = self.f(x, u_pwm)
+        F2 = self.f(x + P.Ts/2.0 * F1, u_pwm)
+        F3 = self.f(x + P.Ts/2.0 * F2, u_pwm)
+        F4 = self.f(x + P.Ts * F3, u_pwm)
+        self.state = self.state + (P.Ts/6.0) * (F1 + 2*F2 + 2*F3 + F4)
+        return self.state

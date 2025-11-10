@@ -1,45 +1,57 @@
-# Hummingbird Parameter File
 import numpy as np
-# Initial Conditions
-phi0 = 0.0 * np.pi / 180  # roll angle in rads
-theta0 = 0 * np.pi / 180  # pitch angle in rads
-psi0 = 0.0 * np.pi / 180  # yaw angle in rads
-phidot0 = 0.0              # roll rate in rads/sec
-thetadot0 = 0.0         # pitch rate in rads/sec
-psidot0 = 0.0              # yaw rate in rads/sec
-# Physical parameters of the hummingbird known to the controller
+
 g = 9.81
-ell1 = 0.247
-ell2 = -0.039
-ell3x = -0.007
-ell3y = -0.007
-ell3z = 0.018
-ellT = 0.355
-d = 0.12
-m1 = 0.108862
-J1x = 0.000189
-J1y = 0.001953
-J1z = 0.001894
-m2 = 0.4717
-J2x = 0.000231
-J2y = 0.003274
-J2z = 0.003416
-m3 = 0.1905
-J3x = 0.0002222
-J3y = 0.0001956
-J3z = 0.000027
-km = g * (m1 * ell1 + m2 * ell2) / ellT  # need to find this experimentally for hardware
 
-# mixing matrix
-unmixing = np.array([[1.0, 1.0], [d, -d]]) # converts fl and fr (LR) to force and torque (FT)
-mixing = np.linalg.inv(unmixing) # converts force and torque (FT) to fl and fr (LR) 
+# Geometry (Appendix B)
+ell1 = 0.247      # m
+ell2 = -0.039     # m
+ell3x = -0.007    # m
+ell3y = -0.007    # m
+ell3z = 0.018     # m
+ellT = 0.355      # m
+d = 0.12          # m
 
-# Simulation Parameters
-t_start = 0.0  # Start time of simulation
-t_end = 100.0  # End time of simulation
-Ts = 0.01  # sample time for simulation
-t_plot = 0.1  # the plotting and animation is updated at this rate
-# saturation limits
-force_max = 2.0                # Max force N
-torque_max = 5.0                # Max torque, Nm
+# Masses
+m1 = 0.108862     # kg
+m2 = 0.4717       # kg
+m3 = 0.1905       # kg
 
+# Inertias (diagonal) kg-m^2
+J1x, J1y, J1z = 0.000189, 0.001953, 0.001894
+J2x, J2y, J2z = 0.000231, 0.003274, 0.003416
+J3x, J3y, J3z = 0.0002222, 0.0001956, 0.000027
+
+# Damping (manual sets phi=0.001 on each axis)
+b_phi = 0.001
+b_theta = 0.001
+b_psi = 0.001
+
+# Motor gain (km is identified later; use a placeholder for sim)
+km = 0.8
+
+# Integration step
+Ts = 0.002
+
+# Simulation timing
+t_start = 0.0     # start time (s)
+t_end = 20.0      # end time (s)
+t_plot = 0.1      # plotting interval (s)
+
+# Initial conditions
+phi0 = 0.0
+theta0 = 0.0
+psi0 = 0.0
+phidot0 = 0.0
+thetadot0 = 0.0
+psidot0 = 0.0
+
+# Hover equilibrium (theta_e = 0) from the manual
+Fe = ((m1*ell1 + m2*ell2) * g) / ellT
+
+# Mixing / Unmixing
+# [fl; fr] = mixing @ [F; tau],  with  F = fl + fr,  tau = d(fl - fr)
+mixing = np.array([[0.5,  1.0/(2.0*d)],
+                   [0.5, -1.0/(2.0*d)]])
+# [F; tau] = unmixing @ [fl; fr]
+unmixing = np.array([[1.0, 1.0],
+                     [d,   -d]])

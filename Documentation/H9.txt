@@ -1,0 +1,25 @@
+Lab Assignment H.9 — Answers
+
+Note: As requested, disturbance-type analysis is omitted. The answers below refer to reference tracking only.
+
+1) Inner loop (roll, phi) with PD control
+   - System type: Type 2 (from torque to angle, the plant is approximately a double integrator; PD adds no integrators).
+   - Steady-state error to inputs:
+     • Step: zero
+     • Ramp: zero
+     • Parabola: finite (nonzero)
+
+2) Outer loop (yaw, psi) with PD control (inner roll loop closed)
+   - System type: approximately Type 1 with respect to psi tracking.
+   - Steady-state error to inputs:
+     • Step: zero
+     • Ramp: finite (nonzero)
+     • Parabola: infinite
+
+3) Longitudinal loop (pitch, theta) with PD control
+   - System type: Type 2 (about hover, from force to angle the plant behaves like a double integrator when the gravity term is canceled with feedforward Fe).
+   - Steady-state error to inputs:
+     • Step: zero
+     • Ramp: zero
+     • Parabola: finite (nonzero)
+

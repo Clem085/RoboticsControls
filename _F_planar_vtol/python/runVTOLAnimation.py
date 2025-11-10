@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """
-run_VTOLAnimation.py
-Runs BOTH the VTOL animation and the 5-panel data plot with scripted signals
-(no plant dynamics). Matches the “solution” signal setup.
+runVTOLAnimation.py
+Simulates the F.5/F.6 linear VTOL about hover using total inputs [F, tau].
+Drives the same animation/plots, converting [F, tau] to [fr, fl] only for logging.
 """
 
-# ---- pick a stable backend BEFORE importing pyplot (mirrors your mass demo) ---
 import matplotlib
-matplotlib.use("tkagg")  # same as massAnimation; avoids Qt-related freezes
+matplotlib.use("tkagg")
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,52 +15,61 @@ import VTOLParam as P
 from signalGenerator import signalGenerator
 from VTOLAnimation import VTOLAnimation
 from dataPlotter import dataPlotter
+from VTOLDynamics import LinearVTOL
 
 # ------------------------------
-# Reference / input signals
+# Reference / input signals (about hover)
 # ------------------------------
-z_plot     = signalGenerator(amplitude=4.0, frequency=0.10, y_offset=5.0)
-h_plot     = signalGenerator(amplitude=2.0, frequency=0.10, y_offset=2.0)
-theta_plot = signalGenerator(amplitude=np.pi/8.0, frequency=0.50, y_offset=0.0)
-
-# Center total thrust around hover equilibrium Fe
-force_plot = signalGenerator(amplitude=5.0, frequency=0.50, y_offset=P.Fe)
-
-# Keep torque modest and not ultra-fast to reduce redraw load
-torque_plot = signalGenerator(amplitude=0.10, frequency=0.50, y_offset=0.0)
+# Keep F near Fe to stay in the linear regime; small oscillation added
+F_sig   = signalGenerator(amplitude=2.0,  frequency=0.40, y_offset=P.Fe)
+tau_sig = signalGenerator(amplitude=0.10, frequency=0.25, y_offset=0.0)
 
 # ------------------------------
-# Plotter & Animation
+# Plant (linear F.6) + visuals
 # ------------------------------
-logger    = dataPlotter()     # 5 stacked plots
-animation = VTOLAnimation()   # vehicle view
+plant = LinearVTOL()
+animation = VTOLAnimation()
+logger    = dataPlotter()
+
+# Print F.5/F.6 objects for the report
+(num_h, den_h)     = plant.tf_vertical()
+(num_th, den_th)   = plant.tf_pitch()
+(num_zth, den_zth) = plant.tf_lateral_theta2z()
+(num_ztau, den_ztau) = plant.tf_lateral_tau2z()
+A,B,C,D = plant.ss()
+
+print("F.5 TFs:")
+print("  H/F     :", num_h,   "/", den_h)
+print("  Theta/Tau:", num_th,  "/", den_th)
+print("  Z/Theta :", num_zth, "/", den_zth)
+print("  Z/Tau   :", num_ztau,"/", den_ztau)
+print("\nF.6 State-space:")
+print("A=\n", A); print("B=\n", B); print("C=\n", C); print("D=\n", D)
 
 # ------------------------------
-# Main loop
+# Main loop (simulate linear model)
 # ------------------------------
 t = P.t_start
 while t < P.t_end:
-    # Scripted “state” (no dynamics)
-    z     = z_plot.sin(t)
-    h     = h_plot.sin(t)
-    theta = theta_plot.sin(t)
+    # total inputs
+    F   = F_sig.sin(t)
+    tau = tau_sig.sin(t)
+    u = np.array([[F], [tau]])
 
-    # Total force/torque -> motor thrusts
-    F   = force_plot.sin(t)
-    tau = torque_plot.sin(t)
-    motor_thrusts = P.mixing @ np.array([[F], [tau]])  # [f_left; f_right]
+    # step the linear plant
+    y = plant.update(u)     # y = [z, h, theta]^T (3x1)
+    # assemble a full state for animation: [z, h, theta, zdot, hdot, thetadot]
+    x = plant.state
 
-    # State vector for visualizers: [z, h, theta, zdot, hdot, thetadot]
-    state = np.array([[z], [h], [theta], [0.0], [0.0], [0.0]])
+    # convert total inputs to rotor thrusts FOR PLOTTING ONLY
+    motor_thrusts = P.mixing @ u  # [fr; fl] = mixing @ [F; tau]
 
-    # Draw animation and plots
-    animation.update(state)  # target defaults to 0.0
-    logger.update(t=t, states=state, motor_thrusts=motor_thrusts, z_ref=0.0, h_ref=0.0)
+    # draw
+    animation.update(x)  # z,h,theta used internally
+    logger.update(t=t, states=x, motor_thrusts=motor_thrusts, z_ref=0.0, h_ref=0.0)
 
-    # Match pacing to your mass demo to keep UI responsive
     t += P.t_plot
-    plt.pause(0.1)  # same pause duration you used with the mass script
+    plt.pause(0.001)
 
-print("Press any key in the plot window to close.")
-plt.waitforbuttonpress()
-plt.close()
+print("Close the figure window to end.")
+plt.show(block=True)

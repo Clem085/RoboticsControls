@@ -1,55 +1,67 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import hummingbirdParam as P
-from hummingbirdAnimation import HummingbirdAnimation
-from dataPlotter import DataPlotter
 from hummingbirdDynamics import HummingbirdDynamics
+from dataPlotter import DataPlotter
+from hummingbirdAnimation import HummingbirdAnimation
 from ctrlEquilibrium import ctrlEquilibrium
 
-# dynamics
-hummingbird = HummingbirdDynamics(alpha=0.0)
+def _anim_update(anim, t, state):
+    """Call animation update with whatever signature your GUI expects."""
+    try:
+        anim.update(t, state)   # common signature
+        return
+    except TypeError:
+        pass
+    try:
+        anim.update(state)      # alternative signature
+        return
+    except TypeError:
+        pass
+    anim.update()               # fallback (no-arg)
 
-# tiny PD trim (for the “poke → settle” demo)
-Kp = 0.05   # per rad
-Kd = 0.02   # per rad/s
+def run_h3():
+    # H.3: "freak out" sim with arbitrary PWM
+    hb = HummingbirdDynamics(alpha=0.0)
+    plotter = DataPlotter()
+    anim = HummingbirdAnimation()
 
-# equilibrium controller: F = Fe, tau = 0
-ctrl = ctrlEquilibrium()
+    t = 0.0
+    t_end = 2.0
+    Ts = P.Ts
 
-# plots/animation
-dataPlot = DataPlotter()
-animation = HummingbirdAnimation()
+    while t < t_end:
+        u = np.array([[np.random.rand()], [np.random.rand()]])  # PWM in [0,1]
+        hb.update(u)
+        plotter.update(t, hb.state, u)
+        _anim_update(anim, t, hb.state)
+        t += Ts
 
-t = P.t_start
-while t < P.t_end:
-    t_next_plot = t + P.t_plot
-    while t < t_next_plot:
-        # base open-loop equilibrium command
-        u_pwm, _ = ctrl.update(hummingbird.state)
+    try: anim.close()
+    except Exception: pass
+    plotter.close()
 
-        # # optional excite: +5% thrust for first 0.5 s
-        # if t < 0.5:
-        #     u_pwm = 1.05 * u_pwm
+def run_h4_equilibrium():
+    # H.4 #1: hover equilibrium (F=Fe, tau=0)
+    hb = HummingbirdDynamics(alpha=0.0)
+    ctrl = ctrlEquilibrium()
+    plotter = DataPlotter()
+    anim = HummingbirdAnimation()
 
-        # PD trim around equilibrium on pitch (negative feedback)
-        theta  = float(hummingbird.state[1,0])
-        thetad = float(hummingbird.state[4,0])
-        corr = -Kp*theta - Kd*thetad
-        u_pwm = u_pwm + np.array([[corr],[corr]], dtype=float)
+    t = 0.0
+    t_end = 2.0
+    Ts = P.Ts
 
-        # clamp to [0,1]
-        u_pwm = np.clip(u_pwm, 0.0, 1.0)
+    while t < t_end:
+        u = ctrl.update(hb.state)
+        hb.update(u)
+        plotter.update(t, hb.state, u)
+        _anim_update(anim, t, hb.state)
+        t += Ts
 
-        # step dynamics
-        y = hummingbird.update(u_pwm)
-        t += P.Ts
+    try: anim.close()
+    except Exception: pass
+    plotter.close()
 
-    # update visuals (pass u_pwm, not 'u')
-    animation.update(t, hummingbird.state)
-    dataPlot.update(t, hummingbird.state, u_pwm)
-
-    plt.pause(0.05)
-
-print('Press key to close')
-plt.waitforbuttonpress()
-plt.close()
+if __name__ == "__main__":
+    run_h3()
+    run_h4_equilibrium()
