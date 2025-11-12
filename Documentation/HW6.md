@@ -1,118 +1,77 @@
-## Part VI Homework — D.9(a), D.10, F.9, F.10
+## HW6 — D.9(a), D.10, F.9, F.10
 
-Concise summary with clean math, run commands, and result placeholders.
+Concise summary with run commands aligned to the provided solutions.
 
-### Run Commands (what to execute)
-- Mass PD (D.8, for reference):
-  - `python _D_mass/python/hwD8_massSim.py`
-- Mass digital PID (D.10):
-  - `python _D_mass/python/hwD10_massSim.py`
-- VTOL nested PID (F.10):
-  - Controller: `hw1_s/F_planar_vtol/ctrlNestedPID_digital.py:1`
-  - Ask to add a small VTOL sim runner if needed.
+### Run Commands
+- Mass PID (D.10): `python _D_mass/python/hwD10_massSim.py`
+- VTOL PID (F.10): `python _F_planar_vtol/python/hw10_VTOLSim.py`
 
-### Paste Your Output Images Here
-- D.9(a) type/SSE: [Paste image]
-- D.10 mass PID step/disturbance: [Paste image]
-- F.9 VTOL type summaries: [Paste image]
-- F.10 nested PID step in h and z: [Paste image]
+Optional (context): D.8 and F.8 references exist but are not required.
+
+### Results Placeholders
+- D.9(a) system type/SSE summary: ![alt text](image.png)
+- D.10 mass PID step response: 
+```bash
+(.venv) C:\Users\consa\Downloads\Programming\Robotics_Controls>C:/Users/consa/Downloads/Programming/Robotics_Controls/.venv/Scripts/python.exe c:/Users/consa/Downloads/Programming/Robotics_Controls/_D_mass/python/hwD10_massSim.py
+kp:  3.0500000000000007
+ki:  1.5
+kd:  7.277
+Press key to close
+```
+
+- F.9 VTOL type summaries: ![alt text](image-1.png)
+- F.10 VTOL step in h and z: 
+```bash
+(.venv) C:\Users\consa\Downloads\Programming\Robotics_Controls>C:/Users/consa/Downloads/Programming/Robotics_Controls/.venv/Scripts/python.exe c:/Users/consa/Downloads/Programming/Robotics_Controls/_F_planar_vtol/python/hw10_VTOLSim.py
+kp_z:  -0.10318726993480598
+kd_z:  -0.1880684580546151
+ki_z:  0.0
+kp_h:  4.217779658585194
+kd_h:  4.779045600456102
+kp_th:  4.9803542208573965
+kd_th:  0.9405161741697609
+Press key to close
+```
 
 ---
 
 ### D.9(a) — System Type & Integrators (Mass–Spring–Damper)
 
 Unity feedback error transfer and final value theorem:
-$$
-E(s)=\frac{1}{1+P(s)C(s)}\,R(s),\qquad e_\infty=\lim_{s\to0}sE(s).
-$$
+E(s) = 1/(1 + P(s)C(s)) R(s),  e_inf = lim_{s->0} s E(s).
 
-- PD: \(C_{\mathrm{PD}}(s)=k_P+k_D s\) → type 0 (no free integrators).
-  - Step: finite SSE; Ramp: \(\infty\); Parabola: \(\infty\).
-- Add integrator: \(C_{\mathrm{PID}}(s)=k_P+\tfrac{k_I}{s}+k_D s\) → type 1.
-  - Step: 0 SSE; Ramp: finite; Parabola: \(\infty\).
+- PD: C_PD(s) = kP + kD s → type 0.
+  - Step: finite SSE; Ramp: ∞; Parabola: ∞.
+- PID: C_PID(s) = kP + kI/s + kD s → type 1.
+  - Step: 0 SSE; Ramp: finite; Parabola: ∞.
 
-Takeaway: a single integrator guarantees zero SSE to steps (more robust to plant uncertainty).
+Takeaway: one integrator guarantees zero SSE to steps and improves robustness.
 
 ---
 
-### D.10 — Digital PID (Mass–Spring–Damper)
+### D.10 — PID with Dirty Derivative
 
-Continuous‑time form with dirty derivative (\(\sigma=0.05\)):
-$$
-C(s)=k_P+k_I\,\frac{1}{s}+k_D\,\frac{s}{\sigma s+1}.
-$$
-Position form: \(u = k_P e + I + k_D\,\dot e_f\), with \(e=r-y\).
+Continuous form (sigma = 0.05): C(s) = kP + kI(1/s) + kD s/(sigma s + 1).
+Implementation uses trapezoidal integral and dirty derivative per solution.
 
-Integral discretizations (sample time \(T_s\)):
-- Backward‑Euler:
-  $$ I[k]=I[k-1]+k_I T_s\,e[k]. $$
-- Tustin (trapezoidal):
-  $$ I[k]=I[k-1]+\frac{k_I T_s}{2}\,(e[k]+e[k-1]). $$
-
-Filtered derivative (dirty derivative):
-$$
-\dot e_f[k]=\frac{\dot e_f[k-1]+\dfrac{e[k]-e[k-1]}{T_s}}{1+\dfrac{\sigma}{T_s}}.
-$$
-
-Measurement‑only difference equations (position form):
-```text
-e[k]   = r[k] - y[k]
-I[k]   = I[k-1] + k_I*T_s*e[k]          # or trapezoidal form above
-dhat[k]= (dhat[k-1] + (e[k]-e[k-1])/T_s) / (1 + sigma/T_s)
-u[k]   = k_P*e[k] + I[k] + k_D*dhat[k]
-```
-
-Files:
-- Controller: `_D_mass/python/ctrlPID_digital.py:1`
-- Simulation: `_D_mass/python/hwD10_massSim.py:1`
-
-Checklist:
-- Step tracking: SSE ≈ 0 with \(k_I>0\).
-- Parameter uncertainty (±20%): PID removes bias that PD leaves.
-- Reasonable overshoot/settling; derivative filter tames noise.
+Files used:
+- Controller: `_D_mass/python/ctrlPID.py`
+- Simulation: `_D_mass/python/hwD10_massSim.py`
 
 ---
 
-### F.9 — System Type & Integrators (VTOL)
+### F.9 — VTOL Types & Integrators
 
-- Altitude (h), PD → type 0; add I in altitude loop → type 1 (step 0 SSE).
-- Attitude (θ) inner loop, PD → type 0 w.r.t. θ command; constant torque disturbance → finite SSE; usually no I here.
-- Lateral position (z) outer loop, PD → type 0; add I in outer loop → type 1 (step 0 SSE).
+- Altitude (h): PD → type 0; add I → type 1 (step 0 SSE).
+- Attitude (theta): inner PD loop (type 0), usually no I here.
+- Lateral position (z): outer PD loop; optional I if needed.
 
 ---
 
-### F.10 — Digital Nested PID (VTOL)
+### F.10 — VTOL PID (Nested)
 
-Architecture:
-- Inner attitude (θ): PD with dirty derivative (fast loop).
-- Outer altitude (h): PID with integrator.
-- Outer lateral (z): PID producing `θ_cmd` with integrator.
+Controller structure per solution: altitude PID, z-loop PID producing theta_r, inner theta PD, with mixing to motor forces.
 
-Discrete‑time skeleton:
-```text
-# altitude (h)
-e_h[k]   = h_r[k] - h[k]
-I_h[k]   = I_h[k-1] + kI_h*T_s*e_h[k]
-dhat_h[k]= (dhat_h[k-1] + (e_h[k]-e_h[k-1])/T_s)/(1+sigma/T_s)
-F_dev[k] = kP_h*e_h[k] + I_h[k] + kD_h*dhat_h[k]
-F[k]     = Fe + F_dev[k]
-
-# outer lateral (z) → theta_cmd
-e_z[k]   = z_r[k] - z[k]
-I_z[k]   = I_z[k-1] + kI_z*T_s*e_z[k]
-dhat_z[k]= (dhat_z[k-1] + (e_z[k]-e_z[k-1])/T_s)/(1+sigma/T_s)
-theta_cmd[k] = kP_z*e_z[k] + I_z[k] + kD_z*dhat_z[k]
-
-# inner attitude (theta)
-e_th[k]  = theta_cmd[k] - theta[k]
-dhat_th  = (dhat_th[k-1] + (e_th[k]-e_th[k-1])/T_s)/(1+sigma/T_s)
-tau[k]   = kP_th*e_th[k] + kD_th*dhat_th
-```
-
-Implementation: `hw1_s/F_planar_vtol/ctrlNestedPID_digital.py:1` (includes hover force `Fe` and mixing to motor forces).
-
-Checklist:
-- Step in `h` and `z`: SSE → 0.
-- Inner θ loop faster than outer loops.
-- Works under ±20% variation in `(m_c,J_c,d,μ)` when integrators are active.
-
+Files used:
+- Controller: `_F_planar_vtol/python/ctrlPID.py`
+- Simulation: `_F_planar_vtol/python/hw10_VTOLSim.py`
