@@ -1,3 +1,7 @@
+# LAB 5: HUMMINGBIRD SIMULATION
+# Hummingbird simulation
+# Connor Savugot
+
 import matplotlib.pyplot as plt
 import numpy as np
 import hummingbirdParam as P
@@ -7,36 +11,36 @@ from dataPlotter import DataPlotter
 from hummingbirdDynamics import HummingbirdDynamics
 from ctrlStateFeedbackIntegrator import ctrlStateFeedbackIntegrator
 
-# instantiate pendulum, controller, and reference classes
-hummingbird = HummingbirdDynamics(alpha=0.1)
+hummingbird = HummingbirdDynamics(alpha=0.05)
 controller = ctrlStateFeedbackIntegrator()
-psi_ref = SignalGenerator(amplitude=30.*np.pi/180., frequency=0.02)
-theta_ref = SignalGenerator(amplitude=15.*np.pi/180., frequency=0.05)
+psi_ref = SignalGenerator(amplitude=10.*np.pi/180., frequency=0.01)   # gentle yaw command
+theta_ref = SignalGenerator(amplitude=8.*np.pi/180., frequency=0.015) # gentle pitch command
 
-# instantiate the simulation plots and animation
+# PLOTS AND ANIMATION
 dataPlot = DataPlotter()
 animation = HummingbirdAnimation()
 
-t = P.t_start  # time starts at t_start
+t = P.t_start  
 y = hummingbird.h()
-while t < P.t_end:  # main simulation loop
+while t < P.t_end: 
 
-    # Propagate dynamics at rate Ts
+    
     t_next_plot = t + P.t_plot
     while t < t_next_plot:
-        r = np.array([[theta_ref.square(t)], [psi_ref.square(t)]])
+        # use square for pitch, sine for yaw to avoid large roll commands
+        r = np.array([[theta_ref.square(t)], [psi_ref.sin(t)]])
         pwms, y_ref = controller.update(r, y)
         y = hummingbird.update(pwms)  # Propagate the dynamics
         t += P.Ts  # advance time by Ts
 
-    # update animation and data plots at rate t_plot
+
     animation.update(t, hummingbird.state)
     dataPlot.update(t, hummingbird.state, pwms, y_ref)
 
-    # the pause causes figure to be displayed during simulation
+    # Maybe add pause
     plt.pause(0.0001)
 
-# Keeps the program from closing until the user presses a button.
+
 print('Press key to close')
 plt.waitforbuttonpress()
 plt.close()
